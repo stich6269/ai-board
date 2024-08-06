@@ -18,9 +18,10 @@ export enum TransactionTypes {
 export interface Transaction {
     type: TransactionTypes,
     amount: number,
-    id: string,
+    number: string,
     date: Dayjs,
-    summary?: string
+    summary?: string;
+    id: string
 }
 export interface AppStore {
     transactions: Transaction[];
@@ -30,11 +31,12 @@ export interface AppStore {
 export const useAppStore = create<AppStore>()(
     (): AppStore => ({
         selectedDate: dayjs(),
-        transactions: dataJSON.map((it: any) => {
+        transactions: dataJSON.map((it: any, i) => {
             return {
                 ...it,
+                id: i,
                 amount: it.amount && +it.amount,
-                id: it.number + '',
+                number: it.number + '',
                 date: dayjs(it.date, 'DD/MM/YYYY:HH:mm')
             }
         }).sort(it => it.day)

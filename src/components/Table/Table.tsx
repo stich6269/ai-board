@@ -6,7 +6,7 @@ import {priceFormatter} from "../../utils/priceFormatter.ts";
 import dayjs from "dayjs";
 
 const columns: GridColDef[] = [
-    { field: 'id', headerName: 'ID', width: 200 },
+    { field: 'number', headerName: 'Number', width: 200 },
     { field: 'amount', headerName: 'Amount', width: 130, valueFormatter: value => priceFormatter(value), valueGetter: v => v ? +v : 0 },
     { field: 'date', headerName: 'LDate', width: 200, valueGetter: v => +v,  valueFormatter: v => dayjs(v).format('DD MMMM YYYY HH:mm') },
     { field: 'type', headerName: 'Type', width: 170 },

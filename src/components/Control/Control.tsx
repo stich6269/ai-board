@@ -3,13 +3,19 @@ import {Button, ButtonGroup} from "@mui/material";
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import {useAppStore} from "../../data";
-import {useEffect} from "react";
+import {useEffect, useState} from "react";
+import {Dayjs} from "dayjs";
 
 export const Control = () => {
     const transactions = useAppStore(s => s.transactions);
     const selectedDate = useAppStore(s => s.selectedDate);
+    const [min, setMin] = useState<Dayjs>();
+    const [max, setMax] = useState<Dayjs>();
 
     useEffect(() => {
+        setMax(transactions![transactions.length - 1].date);
+        setMin(transactions![0].date)
+
         useAppStore.setState(() => ({selectedDate: transactions![transactions.length - 1].date}));
     }, [transactions])
 
@@ -25,11 +31,19 @@ export const Control = () => {
         }));
     }
 
+    const onSelect = (date: Dayjs) => {
+        useAppStore.setState(() => ({
+            selectedDate: date
+        }));
+    }
+
     return (
         <ControlStyled>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
-                    onChange={() => {}}
+                    onChange={v => v && onSelect(v)}
+                    minDate={min}
+                    maxDate={max}
                     slotProps={{ textField: { size: 'small' } }}
                     label="Date"
                     value={selectedDate} />
