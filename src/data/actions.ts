@@ -26,7 +26,6 @@ export const getDailyList = () => {
     const date = useAppStore.getState().selectedDate;
     return useAppStore.getState()
         .transactions?.filter(it => {
-            it.date.isSame(date, 'day') && console.log(it.date.isSame(date, 'day'), it.date.date(), date.date())
             return it.date.isSame(date, 'day')
         }) || [];
 }

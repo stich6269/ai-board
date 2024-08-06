@@ -7,7 +7,6 @@ export const Barchart = () => {
     const date = useAppStore(s => s.selectedDate);
     const [stat, setStat] = useState<any>([]);
     const timeline = new Array(24).fill(0).map((_it, i) => i);
-    console.log(timeline)
 
     useEffect(() => {
         setStat(Object
