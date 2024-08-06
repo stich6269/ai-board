@@ -69,7 +69,7 @@ const getDaily = (date: Dayjs): DailySummary => {
 
     return {
         transactions: list.length,
-        amount: list.reduce((acc, it) => acc += it.amount, 0),
+        amount: list.reduce((acc, it) => acc += it.amount ? +it.amount : 0, 0),
         withdrawn: list.filter(it => it.type === TransactionTypes.WITHDRAWN)
             .reduce((acc, it) => acc += it.amount, 0),
         deposit: list.filter(it => it.type === TransactionTypes.DEPOSIT)
