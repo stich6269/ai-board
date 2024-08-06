@@ -18,7 +18,7 @@ export const APPPieChart = () => {
 
     return (
         <PieChartStyled>
-            <div className="title">Atm statistic</div>
+            <div className="title">ATM statistic</div>
 
             <PieChart
                 slotProps={{

@@ -21,7 +21,7 @@ export const Barchart = () => {
 
     return (
         <BarchartStyled>
-            <span className="title">Atm daily usage</span>
+            <span className="title">ATM daily usage</span>
 
             <LineChart
                 width={535}
