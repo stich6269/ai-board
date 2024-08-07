@@ -18,7 +18,7 @@ export const BarchartStyled = styled.div`
     margin-left: -17px;
     margin-top: -38px;
     overflow: hidden;
-    width: 546px;
+    width: 635px;
   }
     
 `

@@ -45,7 +45,7 @@ export const APPPieChart = () => {
                         cornerRadius: 5,
                         startAngle: -90,
                         endAngle: 270,
-                        cx: 150,
+                        cx: 180,
                         cy: 130,
                     }
                 ]}

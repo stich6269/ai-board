@@ -30,7 +30,7 @@ export const Barchart = () => {
             <span className="title">ATM daily usage</span>
 
             <LineChart
-                width={535}
+                width={600}
                 height={290}
                 slotProps={{ legend: { hidden: true } }}
                 xAxis={[{
