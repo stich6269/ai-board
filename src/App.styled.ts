@@ -22,7 +22,7 @@ export const AppStyled = styled.div`
     overflow: auto;
     
     >div{
-      max-width: 1000px;
+      max-width: 1200px;
     }
 
     .row{

@@ -1,52 +1,59 @@
 import {ControlStyled} from "./Control.styled.ts";
 import {Button, ButtonGroup} from "@mui/material";
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import {LocalizationProvider} from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import {useAppStore} from "../../data";
-import {useEffect, useState} from "react";
-import {Dayjs} from "dayjs";
+import {useEffect} from "react";
+import dayjs from "dayjs";
 
 export const Control = () => {
-    const transactions = useAppStore(s => s.transactions);
     const selectedDate = useAppStore(s => s.selectedDate);
-    const [min, setMin] = useState<Dayjs>();
-    const [max, setMax] = useState<Dayjs>();
+    const selectedWeek = useAppStore(s => s.selectedWeek);
+    const transactions = useAppStore(s => s.transactions);
 
     useEffect(() => {
-        setMax(transactions![transactions.length - 1].date);
-        setMin(transactions![0].date)
-
-        useAppStore.setState(() => ({selectedDate: transactions![transactions.length - 1].date}));
-    }, [transactions])
+        const lastDataDay = transactions![transactions.length - 1].date;
+        useAppStore.setState(() => ({selectedDate: lastDataDay}));
+    }, [])
 
     const onNext = () => {
         useAppStore.setState(() => ({
-            selectedDate: selectedDate.clone().add(1, 'day')
+            selectedDate: selectedDate ? selectedDate!.clone().add(1, 'day') : undefined,
+            selectedWeek: selectedWeek ? selectedWeek  + 1 : undefined
         }));
     }
 
     const onPrev = () => {
         useAppStore.setState(() => ({
-            selectedDate: selectedDate.clone().subtract(1, 'day')
+            selectedDate: selectedDate ? selectedDate!.clone().subtract(1, 'day') : undefined,
+            selectedWeek: selectedWeek ? selectedWeek - 1 : undefined
         }));
     }
+    const onWeekly = () => {
+        useAppStore.setState(() => (
+            {selectedDate: undefined, selectedWeek: selectedDate?.week()}
+        ));
+    }
 
-    const onSelect = (date: Dayjs) => {
-        useAppStore.setState(() => ({
-            selectedDate: date
-        }));
+    const onDaily = () => {
+        const lastDataDay = transactions![transactions.length - 1].date;
+        useAppStore.setState(() => (
+            {selectedDate: lastDataDay, selectedWeek: undefined}
+        ));
     }
 
     return (
         <ControlStyled>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                    onChange={v => v && onSelect(v)}
-                    minDate={min}
-                    maxDate={max}
-                    slotProps={{ textField: { size: 'small' } }}
-                    label="Date"
-                    value={selectedDate} />
+                <div className='date'>
+                    {selectedDate && selectedDate.format('DD MMMM YYYY')}
+
+                    {selectedWeek && (<>
+                        {dayjs().week(selectedWeek).weekday(1).format('DD MMMM YYYY')} -
+                        {dayjs().week(selectedWeek).weekday(7).format('DD MMMM YYYY')}
+                    </>)}
+                </div>
+
             </LocalizationProvider>
 
             <ButtonGroup variant="contained"
@@ -61,9 +68,9 @@ export const Control = () => {
                          aria-label="Basic button group"
                          disableElevation>
 
-                <Button disabled>Weekly</Button>
                 <Button disabled>Monthly</Button>
-                <Button>Daily</Button>
+                <Button onClick={onWeekly} color={selectedWeek ? "warning" : "primary"} >Weekly</Button>
+                <Button onClick={onDaily} color={selectedDate ? "warning" : "primary"} >Daily</Button>
             </ButtonGroup>
         </ControlStyled>
     )

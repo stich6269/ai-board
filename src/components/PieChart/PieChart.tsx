@@ -1,20 +1,21 @@
 import {PieChartStyled} from "./PieChart.styled.ts";
 import {PieChart} from "@mui/x-charts";
-import {getDailyStatistic, useAppStore} from "../../data";
+import {getRangeTransactionsByType, useAppStore} from "../../data";
 import {useEffect, useState} from "react";
 
 export const APPPieChart = () => {
     const date = useAppStore(s => s.selectedDate);
+    const week = useAppStore(s => s.selectedWeek);
     const [stat, setStat] = useState<any>([]);
 
     useEffect(() => {
         setStat(Object
-            .entries(getDailyStatistic())
-            .map(([_k, value]) => ({
-                value,
+            .entries(getRangeTransactionsByType())
+            .map(([_k, list]) => ({
+                value: list.length,
                 label: _k
             })))
-    }, [date]);
+    }, [date, week]);
 
     return (
         <PieChartStyled>

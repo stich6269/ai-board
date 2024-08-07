@@ -10,4 +10,17 @@ export const ControlStyled = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
+  
+  button{
+    &:hover, &:active{
+      border: none;
+      outline: none;
+    }
+  }
+  
+  .date{
+    color: #787878;
+    font-size: 19px;
+    padding-left: 10px;
+  }
 `

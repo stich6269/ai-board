@@ -25,7 +25,8 @@ export interface Transaction {
 }
 export interface AppStore {
     transactions: Transaction[];
-    selectedDate: Dayjs;
+    selectedDate?: Dayjs;
+    selectedWeek?: number;
 }
 
 export const useAppStore = create<AppStore>()(

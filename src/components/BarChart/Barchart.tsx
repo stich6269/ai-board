@@ -1,23 +1,29 @@
 import {BarchartStyled} from "./Barchart.styled.ts";
 import {LineChart} from "@mui/x-charts";
-import {getDailyTransactions, useAppStore} from "../../data";
+import {getRangeTransactionsByType, useAppStore} from "../../data";
 import {useEffect, useState} from "react";
 
 export const Barchart = () => {
     const date = useAppStore(s => s.selectedDate);
+    const week = useAppStore(s => s.selectedWeek);
     const [stat, setStat] = useState<any>([]);
-    const timeline = new Array(24).fill(0).map((_it, i) => i);
+    const [xSet, setXSet] = useState<string[]>([]);
+
+    const timeline = new Array(24).fill(0).map((_it, i) => i + '');
+    const dayLine = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     useEffect(() => {
         setStat(Object
-            .entries(getDailyTransactions())
+            .entries(getRangeTransactionsByType())
             .map(([_k, value]) => {
-                const sum = new Array(24).fill(0);
-                value.forEach(it => sum[it.date.hour()] += 1);
+                const sum = new Array(week ? 7 : 24).fill(0);
 
+                value.forEach(it => sum[week ? it.date.weekday() : it.date.hour()] += 1);
                 return {data: sum, showMark: false, label: _k}
             }))
-    }, [date])
+
+        setXSet(week ? dayLine : timeline);
+    }, [date, week])
 
     return (
         <BarchartStyled>
@@ -28,10 +34,10 @@ export const Barchart = () => {
                 height={290}
                 slotProps={{ legend: { hidden: true } }}
                 xAxis={[{
-                    data: timeline,
+                    data: xSet,
                     tickSize: 10,
                     scaleType: "point",
-                    valueFormatter: it => it >= 10 ? `${it}:00` : `0${it}:00`
+                    valueFormatter: it => week ? it : (it >= 10 ? `${it}:00` : `0${it}:00`)
                 }]}
                 series={stat}
             />

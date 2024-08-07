@@ -21,6 +21,7 @@ export const StatsStyled = styled.div`
     text-align: left;
     color: #8690A5;
     padding-left: 27px;
+    user-select: none;
 
     &:last-child {
       border-right: none;

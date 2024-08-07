@@ -8,7 +8,11 @@ import {Table} from "./components/Table";
 import dayjs from "dayjs";
 import customParseFormat from 'dayjs/plugin/customParseFormat'
 import utc from 'dayjs/plugin/utc'
+import weekOfYear from 'dayjs/plugin/weekOfYear'
+import weekday from 'dayjs/plugin/weekday'
 
+dayjs.extend(weekday)
+dayjs.extend(weekOfYear)
 dayjs.extend(customParseFormat)
 dayjs.extend(utc)
 

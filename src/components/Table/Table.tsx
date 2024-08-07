@@ -1,6 +1,6 @@
 import {TableStyled} from "./Table.styled.ts";
 import {DataGrid, GridColDef} from "@mui/x-data-grid";
-import {getDailyList, Transaction, useAppStore} from "../../data";
+import {getRangeList, Transaction, useAppStore} from "../../data";
 import {useEffect, useState} from "react";
 import {priceFormatter} from "../../utils/priceFormatter.ts";
 import dayjs from "dayjs";
@@ -15,11 +15,12 @@ const columns: GridColDef[] = [
 
 export const Table = () => {
     const date = useAppStore(s => s.selectedDate);
+    const week = useAppStore(s => s.selectedWeek);
     const [stat, setStat] = useState<Transaction[]>([]);
 
     useEffect(() => {
-        setStat(getDailyList())
-    }, [date]);
+        setStat(getRangeList())
+    }, [date, week]);
 
     return (
         <TableStyled>
