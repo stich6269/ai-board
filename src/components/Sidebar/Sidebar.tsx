@@ -4,18 +4,25 @@ import GridViewIcon from '@mui/icons-material/GridView';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import LocalAtmIcon from '@mui/icons-material/LocalAtm';
 import ArticleIcon from '@mui/icons-material/Article';
+import {NavLink} from "react-router-dom";
 export const Sidebar = () => {
     return (
         <SidebarStyled>
             <img className='logo' src={Logo} alt=""/>
 
-            <div className="item active">
+            <NavLink
+                to="/dashboard"
+                className={({ isActive }) => isActive ? "item active" : "item"}
+            >
                 Dashboard <GridViewIcon />
-            </div>
+            </NavLink>;
 
-            <div className="item disabled">
+            <NavLink
+                to="/transactions"
+                className={({ isActive }) => isActive ? "item active" : "item"}
+            >
                 Transactions <AccountBalanceIcon />
-            </div>
+            </NavLink>;
 
             <div className="item disabled">
                 ATM <LocalAtmIcon />

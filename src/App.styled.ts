@@ -24,20 +24,5 @@ export const AppStyled = styled.div`
     >div{
       max-width: 1200px;
     }
-
-    .row{
-      width: 100%;
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      margin-top: 25px;
-      
-      >div{
-        width: 49%;
-        min-height: 150px;
-        background-color: white;
-        border-radius: 10px;
-      }
-    }
   }
 `

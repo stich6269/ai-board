@@ -1,7 +1,6 @@
 import {TableStyled} from "./Table.styled.ts";
 import {DataGrid, GridColDef} from "@mui/x-data-grid";
-import {getRangeList, Transaction, useAppStore} from "../../data";
-import {useEffect, useState} from "react";
+import {Transaction} from "../../data";
 import {priceFormatter} from "../../utils/priceFormatter.ts";
 import dayjs from "dayjs";
 
@@ -13,23 +12,20 @@ const columns: GridColDef[] = [
     { field: 'summary', headerName: 'Information', width: 1000 },
 ];
 
-export const Table = () => {
-    const date = useAppStore(s => s.selectedDate);
-    const week = useAppStore(s => s.selectedWeek);
-    const [stat, setStat] = useState<Transaction[]>([]);
-
-    useEffect(() => {
-        setStat(getRangeList())
-    }, [date, week]);
-
+interface TableProps {
+    list: Transaction[];
+    pageSize?: number;
+    className?: string;
+}
+export const Table = ({list, pageSize = 10, className}: TableProps) => {
     return (
-        <TableStyled>
+        <TableStyled className={className}>
             <DataGrid
-                rows={stat}
+                rows={list}
                 columns={columns}
                 initialState={{
                     pagination: {
-                        paginationModel: { page: 0, pageSize: 10 },
+                        paginationModel: { page: 0, pageSize },
                     },
                 }}
                 pageSizeOptions={[10, 100]}

@@ -8,6 +8,10 @@ export const SidebarStyled = styled.div`
   align-items: center;
   padding: 54px 12px;
   
+  a{
+    text-decoration: none;
+  }
+  
   .logo{
     width: 98px;
     height: 71px;

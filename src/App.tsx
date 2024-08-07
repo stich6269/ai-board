@@ -1,15 +1,13 @@
 import {Sidebar} from "./components/Sidebar";
 import {AppStyled} from "./App.styled.ts";
-import {Stats} from "./components/Stats";
-import {Barchart} from "./components/BarChart";
-import {APPPieChart} from "./components/PieChart";
-import {Control} from "./components/Control";
-import {Table} from "./components/Table";
 import dayjs from "dayjs";
 import customParseFormat from 'dayjs/plugin/customParseFormat'
 import utc from 'dayjs/plugin/utc'
 import weekOfYear from 'dayjs/plugin/weekOfYear'
 import weekday from 'dayjs/plugin/weekday'
+import {BrowserRouter, Navigate, Route, Routes} from "react-router-dom";
+import {Dashboard} from "./Dashboard";
+import {Transactions} from "./Transactions";
 
 dayjs.extend(weekday)
 dayjs.extend(weekOfYear)
@@ -20,21 +18,22 @@ dayjs.extend(utc)
 function App() {
     return (
         <AppStyled>
-            <Sidebar />
 
-            <div className="content">
-                <Control />
-                <Stats />
+            <BrowserRouter>
+                <Sidebar />
 
-                <div className="row">
-                    <Barchart />
-                    <APPPieChart />
+                <div className="content">
+                    <Routes>
+                        <Route path="/" element={<Navigate to='dashboard' />} />
+                        <Route path="/dashboard" element={<Dashboard/>} />
+                        <Route path="/transactions" element={<Transactions />} />
+                    </Routes>
                 </div>
+            </BrowserRouter>
 
-                <Table />
-            </div>
         </AppStyled>
     )
 }
+
 
 export default App
