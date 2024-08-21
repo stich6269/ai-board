@@ -2,7 +2,7 @@ import {ControlStyled} from "./Control.styled.ts";
 import {Button, ButtonGroup} from "@mui/material";
 import {LocalizationProvider} from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import {useAppStore} from "../../data";
+import {useAppStore} from "../../data/clients";
 import {useEffect} from "react";
 import dayjs from "dayjs";
 

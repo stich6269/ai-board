@@ -1,0 +1,130 @@
+[
+  {
+    "type": "SUPERVISOR_MODE",
+    "amount": 0,
+    "number": "40140608300",
+    "date": "01/07/2024:10:05",
+    "deposit": {},
+    "withdrawn": {
+      "ILS200": {},
+      "ILS50": {},
+      "ILS100": {},
+      "ILS20": {}
+    },
+    "summary": "This is a supervised mode transactin",
+    "amountFinal": 0
+  },
+  {
+    "type": "SUPERVISOR_MODE",
+    "amount": 0,
+    "number": "40140608300",
+    "date": "07/07/2024:10:05",
+    "deposit": {
+      "ILS20": 0,
+      "ILS50": 0,
+      "ILS100": 2,
+      "ILS200": 35
+    },
+    "withdrawn": {
+      "ILS200": {
+        "cassette": 363,
+        "rejected": 1,
+        "remaining": 364,
+        "dispensed": 1636,
+        "total": 2000
+      },
+      "ILS50": {
+        "cassette": 655,
+        "rejected": 1,
+        "remaining": 656,
+        "dispensed": 844,
+        "total": 1500
+      },
+      "ILS100": {
+        "cassette": 1172,
+        "rejected": 3,
+        "remaining": 1175,
+        "dispensed": 825,
+        "total": 2000
+      },
+      "ILS20": {}
+    },
+    "summary": "This is a supervised mode transactin",
+    "amountFinal": 0
+  },
+  {
+    "type": "SUPERVISOR_MODE",
+    "amount": 0,
+    "number": "40182439000",
+    "date": "11/07/2024:10:17",
+    "deposit": {
+      "ILS20": 3,
+      "ILS50": 50,
+      "ILS100": 145,
+      "ILS200": 392
+    },
+    "withdrawn": {
+      "ILS200": {
+        "cassette": 223,
+        "rejected": 3,
+        "remaining": 226,
+        "dispensed": 1774,
+        "total": 2000
+      },
+      "ILS50": {
+        "cassette": 779,
+        "rejected": 1,
+        "remaining": 780,
+        "dispensed": 720,
+        "total": 1500
+      },
+      "ILS100": {
+        "cassette": 1344,
+        "rejected": 5,
+        "remaining": 1349,
+        "dispensed": 651,
+        "total": 2000
+      },
+      "ILS20": {}
+    },
+    "summary": "This is a supervised mode transactin",
+    "amountFinal": 0
+  },
+  {
+    "type": "SUPERVISOR_MODE",
+    "amount": 0,
+    "number": "40253319200",
+    "date": "19/07/2024:11:23",
+    "deposit": {
+      "ILS20": 0,
+      "ILS50": 0,
+      "ILS100": 0,
+      "ILS200": 0
+    },
+    "withdrawn": {
+      "ILS200": {
+        "cassette": 182,
+        "rejected": 2,
+        "remaining": 184,
+        "dispensed": 1816,
+        "total": 2000
+      },
+      "ILS50": {
+        "cassette": 388,
+        "rejected": 2,
+        "remaining": 390,
+        "dispensed": 1110,
+        "total": 1500
+      },
+      "ILS100": {
+        "cassette": 998,
+        "rejected": 2,
+        "remaining": 1000,
+        "dispensed": 1000
+      },
+      "ILS20": {}
+    },
+    "summary": "This is a supervised mode transactin",
+    "amountFinal": 0
+  }
+]

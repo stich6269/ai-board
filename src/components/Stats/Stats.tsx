@@ -1,6 +1,6 @@
 import {StatsStyled} from "./Stats.styled.ts";
 import {useEffect, useState} from "react";
-import {DailySummary, getRangeSummary, useAppStore} from "../../data";
+import {DailySummary, getRangeSummary, useAppStore} from "../../data/clients";
 import {priceFormatter} from "../../utils/priceFormatter.ts";
 import classNames from "classnames";
 

@@ -6,8 +6,9 @@ import utc from 'dayjs/plugin/utc'
 import weekOfYear from 'dayjs/plugin/weekOfYear'
 import weekday from 'dayjs/plugin/weekday'
 import {BrowserRouter, Navigate, Route, Routes} from "react-router-dom";
-import {Dashboard} from "./Dashboard";
-import {Transactions} from "./Transactions";
+import {Dashboard} from "./pages/Dashboard";
+import {Transactions} from "./pages/Transactions";
+import {Atm} from "./pages/Atm";
 
 dayjs.extend(weekday)
 dayjs.extend(weekOfYear)
@@ -26,6 +27,7 @@ function App() {
                     <Routes>
                         <Route path="/" element={<Navigate to='dashboard' />} />
                         <Route path="/dashboard" element={<Dashboard/>} />
+                        <Route path="/atm" element={<Atm />} />
                         <Route path="/transactions" element={<Transactions />} />
                     </Routes>
                 </div>

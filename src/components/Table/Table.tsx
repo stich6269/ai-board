@@ -1,6 +1,6 @@
 import {TableStyled} from "./Table.styled.ts";
 import {DataGrid, GridColDef} from "@mui/x-data-grid";
-import {Transaction} from "../../data";
+import {Transaction} from "../../data/clients";
 import {priceFormatter} from "../../utils/priceFormatter.ts";
 import dayjs from "dayjs";
 

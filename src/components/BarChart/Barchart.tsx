@@ -1,6 +1,6 @@
 import {BarchartStyled} from "./Barchart.styled.ts";
 import {LineChart} from "@mui/x-charts";
-import {getRangeTransactionsByType, useAppStore} from "../../data";
+import {getRangeTransactionsByType, useAppStore} from "../../data/clients";
 import {useEffect, useState} from "react";
 
 export const Barchart = () => {

@@ -18,15 +18,20 @@ export const Sidebar = () => {
             </NavLink>;
 
             <NavLink
+                to="/atm"
+                className={({ isActive }) => isActive ? "item active" : "item"}
+            >
+                ATM <LocalAtmIcon />
+            </NavLink>
+
+            <NavLink
                 to="/transactions"
                 className={({ isActive }) => isActive ? "item active" : "item"}
             >
                 Transactions <AccountBalanceIcon />
             </NavLink>;
 
-            <div className="item disabled">
-                ATM <LocalAtmIcon />
-            </div>
+
 
             <div className="item disabled">
                 Logs <ArticleIcon />

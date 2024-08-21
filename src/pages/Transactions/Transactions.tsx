@@ -1,6 +1,6 @@
 import {TransactionsStyled} from "./Transactions.styled.ts";
-import {Table} from "../components/Table";
-import {Transaction, TransactionTypes, useAppStore} from "../data";
+import {Table} from "../../components/Table";
+import {Transaction, TransactionTypes, useAppStore} from "../../data/clients";
 import {Button, ButtonGroup, TextField} from "@mui/material";
 import {useEffect, useState} from "react";
 

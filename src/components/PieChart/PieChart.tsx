@@ -1,6 +1,6 @@
 import {PieChartStyled} from "./PieChart.styled.ts";
 import {PieChart} from "@mui/x-charts";
-import {getRangeTransactionsByType, useAppStore} from "../../data";
+import {getRangeTransactionsByType, useAppStore} from "../../data/clients";
 import {useEffect, useState} from "react";
 
 export const APPPieChart = () => {

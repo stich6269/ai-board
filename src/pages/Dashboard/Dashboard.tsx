@@ -1,10 +1,10 @@
 import {DashboardStyled} from "./Dashboard.styled.ts";
-import {Control} from "../components/Control";
-import {Stats} from "../components/Stats";
-import {Barchart} from "../components/BarChart";
-import {APPPieChart} from "../components/PieChart";
-import {Table} from "../components/Table";
-import {getRangeList, Transaction, useAppStore} from "../data";
+import {Control} from "../../components/Control";
+import {Stats} from "../../components/Stats";
+import {Barchart} from "../../components/BarChart";
+import {APPPieChart} from "../../components/PieChart";
+import {Table} from "../../components/Table";
+import {getRangeList, Transaction, useAppStore} from "../../data/clients";
 import {useEffect, useState} from "react";
 
 export const Dashboard = () => {
@@ -19,6 +19,7 @@ export const Dashboard = () => {
     return (
         <DashboardStyled>
             <Control />
+
             <Stats />
 
             <div className="row">
@@ -26,7 +27,7 @@ export const Dashboard = () => {
                 <APPPieChart />
             </div>
 
-            <Table list={stat} />
+            <Table list={stat} pageSize={5} />
         </DashboardStyled>
     )
 }
