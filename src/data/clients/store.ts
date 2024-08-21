@@ -2,7 +2,9 @@ import { create } from 'zustand'
 import dataJSON from '../../assets/data.json';
 import dayjs, {Dayjs} from "dayjs";
 import customParseFormat from 'dayjs/plugin/customParseFormat'
+import utc from "dayjs/plugin/utc";
 
+dayjs.extend(utc)
 dayjs.extend(customParseFormat)
 
 
@@ -49,7 +51,7 @@ export const useAppStore = create<AppStore>()(
                 id: i,
                 amount: it.amount && +it.amount,
                 number: it.number + '',
-                date: dayjs(it.date, 'DD/MM/YYYY:HH:mm')
+                date: dayjs.utc(it.date, 'DD/MM/YYYY:HH:mm').set("second", 0).set("milliseconds", 0)
             }
         }).sort(it => it.date)
     })

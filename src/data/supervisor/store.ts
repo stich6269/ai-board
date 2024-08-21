@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 import dataJSON from '../../assets/supervisor.json';
 import dayjs, {Dayjs} from "dayjs";
+import utc from "dayjs/plugin/utc";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+dayjs.extend(utc)
+dayjs.extend(customParseFormat)
 
 export interface SupervisorDepositILS{
     "ILS200": number;
@@ -51,7 +55,7 @@ export const useSupervisorStore = create<SupervisorStore>()(
                     ...it,
                     amount: it.amount && +it.amount,
                     number: it.number + '',
-                    date: dayjs(it.date, 'DD/MM/YYYY:HH:mm')
+                    date: dayjs.utc(it.date, 'DD/MM/YYYY:HH:mm').set("second", 0).set("milliseconds", 0)
                 }
             })
             .sort(it => it.date)

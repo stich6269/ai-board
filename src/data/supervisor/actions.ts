@@ -57,6 +57,10 @@ const logToIls = (log: SupervisorLog) => {
 const rangeToIls = (start: Dayjs, end: Dayjs) => {
     const list = rangeList(start, end);
 
+    console.log('>>', start.toString())
+    console.log('<<', end.toString())
+    console.log(list)
+
     return {
         deposit: listToIls(list, TransactionTypes.DEPOSIT),
         withdrawn: listToIls(list, TransactionTypes.WITHDRAWN)
@@ -98,6 +102,6 @@ const rangeToAmounts = (start: Dayjs, end: Dayjs) => {
 
 const rangeList = (start: Dayjs, end: Dayjs) => {
     return  useAppStore.getState().transactions
-        .filter(it => (it.date > start && it.date < end)
+        .filter(it => (it.date > start && it.date <= end)
         && (it.type === TransactionTypes.DEPOSIT || it.type === TransactionTypes.WITHDRAWN));
 }

@@ -18,17 +18,12 @@ export const Table = () => {
         <TableStyled>
             <div className="row head">
                 <div className="cell">Bills</div>
-                <div className="cell">Quantity</div>
                 <div className="cell">Withdrawn</div>
                 <div className="cell">Deposit</div>
             </div>
 
             <div className="row labels">
                 <div className="cell"></div>
-                <div className="cell">
-                    <div>Actual</div>
-                    <div>in Log</div>
-                </div>
                 <div className="cell">
                     <div>Actual</div>
                     <div>in Log</div>
@@ -44,10 +39,7 @@ export const Table = () => {
                 <div className="cell">
                     <div className="icon ils200"></div>
                 </div>
-                <div className="cell">
-                    <div>0</div>
-                    <div>0</div>
-                </div>
+
                 <div className="cell">
                     <div>{stat?.actual.withdrawn.ILS200}</div>
                     <div className={classNames({error: stat?.actual.withdrawn.ILS200 !== stat?.log.withdrawn.ILS200})}>
@@ -64,10 +56,6 @@ export const Table = () => {
             <div className="row">
                 <div className="cell">
                     <div className="icon ils100"></div>
-                </div>
-                <div className="cell">
-                    <div>0</div>
-                    <div>0</div>
                 </div>
                 <div className="cell">
                     <div>{stat?.actual.withdrawn.ILS100}</div>
@@ -87,10 +75,6 @@ export const Table = () => {
                     <div className="icon ils50"></div>
                 </div>
                 <div className="cell">
-                    <div>0</div>
-                    <div>0</div>
-                </div>
-                <div className="cell">
                     <div>{stat?.actual.withdrawn.ILS50}</div>
                     <div className={classNames({error: stat?.actual.withdrawn.ILS50 !== stat?.log.withdrawn.ILS50})}>
                         {stat?.log.withdrawn.ILS50}
@@ -106,10 +90,6 @@ export const Table = () => {
             <div className="row">
                 <div className="cell">
                     <div className="icon ils20"></div>
-                </div>
-                <div className="cell">
-                    <div>0</div>
-                    <div>0</div>
                 </div>
                 <div className="cell">
                     <div>{stat?.actual.withdrawn.ILS20}</div>
