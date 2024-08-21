@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import dataJSON from '../assets/data.json';
+import dataJSON from '../../assets/data.json';
 import dayjs, {Dayjs} from "dayjs";
 import customParseFormat from 'dayjs/plugin/customParseFormat'
 
@@ -13,15 +13,26 @@ export enum TransactionTypes {
     'DEPOSIT' = 'DEPOSIT',
     'OTHER' = 'OTHER',
     'FAILED_ATM' = 'FAILED_ATM',
+    'SUPERVISOR_MODE' = 'SUPERVISOR_MODE',
     'undefined' = 'undefined'
 }
+
+export interface UserILS{
+    "ILS200": number;
+    "ILS100": number;
+    "ILS50": number;
+    "ILS20": number;
+}
+
 export interface Transaction {
     type: TransactionTypes,
     amount: number,
     number: string,
     date: Dayjs,
     summary?: string;
-    id: string
+    id: string;
+    summaryIls: UserILS;
+    amountFinal: number;
 }
 export interface AppStore {
     transactions: Transaction[];
@@ -40,6 +51,6 @@ export const useAppStore = create<AppStore>()(
                 number: it.number + '',
                 date: dayjs(it.date, 'DD/MM/YYYY:HH:mm')
             }
-        }).sort(it => it.day)
+        }).sort(it => it.date)
     })
 )
