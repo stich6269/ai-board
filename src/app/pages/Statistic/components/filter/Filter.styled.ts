@@ -1,6 +1,7 @@
 import {Box, styled} from "@mui/material";
 
-export const FilterStyled = styled(Box)`margin-top: 10px;
+export const FilterStyled = styled("form")`
+    margin-top: 10px;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
