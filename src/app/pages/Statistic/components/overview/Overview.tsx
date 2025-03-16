@@ -1,35 +1,50 @@
-import {DemoPaper, OverviewStyled, Title} from "./Overview.styled.ts";
+import {DemoPaper, OverviewStyled, Title, Value} from "./Overview.styled.ts";
 import {Stack} from "@mui/material";
-import {useIssuesStat} from "./use-issues-stat.tsx";
-import {useAiStat} from "./use-ai-stat.tsx";
-import {useCompanyStat} from "./use-company-stat.tsx";
-import {usePromptStat} from "./use-prompt-stat.tsx";
+import {useMemo} from "react";
+import {countDuration} from "../../../../shared/helpers/countDuration.ts";
+import {useQuery} from "@tanstack/react-query";
+import {issueApi} from "../../../../shared/model/issues/api.ts";
+import {engineerApi} from "../../../../shared/model/engeneers/api.ts";
+import {aiIssuesStat} from "../../../../shared/libs/ai-issues-stat.ts";
 
 
 
 export const Overview = () => {
-  const {generalStat} = useIssuesStat();
-  const {cycleStat} = useAiStat();
-  const {companyStat} = useCompanyStat();
-  const as = usePromptStat();
+  const {data} = useQuery(issueApi.getAll())
+  const {data: people} = useQuery(engineerApi.getAll())
+  const duration = useMemo(() => countDuration(data), [data])
+  const {
+    aiUsage,
+    aiBoostPercentage
+  } = useMemo(() => aiIssuesStat(data), [data])
+  
   
   return (
     <OverviewStyled>
       <Stack direction="row" spacing={2}>
         <DemoPaper variant="elevation">
-          <Title>Issue resolved</Title>
-          {generalStat}
+          <Title>Issues closed</Title>
+          <Value>{data?.length}</Value>
         </DemoPaper>
+        
         <DemoPaper variant="elevation">
-          <Title>Ai performance boost</Title>
-          {cycleStat}
+          <Title>Engineers</Title>
+          <Value>{people?.length}</Value>
         </DemoPaper>
+        
         <DemoPaper variant="elevation">
-          <Title>Company focus</Title>
-          {companyStat}
+          <Title>Working time</Title>
+          <Value>{duration}h</Value>
         </DemoPaper>
+        
         <DemoPaper variant="elevation">
-          <Title>Prompt guru</Title>
+          <Title>Ai used</Title>
+          <Value>{aiUsage} h</Value>
+        </DemoPaper>
+        
+        <DemoPaper variant="elevation">
+          <Title>AI usage boost</Title>
+          <Value>{aiBoostPercentage}%</Value>
         </DemoPaper>
       </Stack>
     </OverviewStyled>

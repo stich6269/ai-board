@@ -7,10 +7,16 @@ export const OverviewStyled = styled(Box)`
 export const DemoPaper = styled(Paper)`
     width: 100%;
     overflow: hidden;
+    padding: 8px 16px;
 `
 
 export const Title = styled(Typography)`
-    padding: 8px;
-    background-color: #1876d2;
-    color: white;
+    color: gray;
+    margin-bottom: 10px;
+`
+
+export const Value = styled(Typography)`
+    font-size: 40px;
+    color: #626262;
+    line-height: 1;
 `

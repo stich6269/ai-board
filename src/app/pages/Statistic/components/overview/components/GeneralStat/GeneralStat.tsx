@@ -1,12 +1,12 @@
-import {issueApi} from "../../../../shared/model/issues/api.ts";
+import {issueApi} from "../../../../../../shared/model/issues/api.ts";
 import {useQuery} from "@tanstack/react-query";
 import {useMemo} from "react";
-import {Issue} from "../../../../shared/model/issues/types.ts";
-import {projectsApi} from "../../../../shared/model/projects/api.ts";
-import {teamsApi} from "../../../../shared/model/teams/api.ts";
-import {engineerApi} from "../../../../shared/model/engeneers/api.ts";
+import {projectsApi} from "../../../../../../shared/model/projects/api.ts";
+import {teamsApi} from "../../../../../../shared/model/teams/api.ts";
+import {engineerApi} from "../../../../../../shared/model/engeneers/api.ts";
+import {countDuration} from "../../../../../../shared/helpers/countDuration.ts";
 
-export const useIssuesStat = () => {
+export const GeneralStat = () => {
   const {data} = useQuery(issueApi.getAll())
   const {data: projects} = useQuery(projectsApi.getAll())
   const {data: teams} = useQuery(teamsApi.getAll())
@@ -14,8 +14,7 @@ export const useIssuesStat = () => {
   
   const duration = useMemo(() => countDuration(data), [data])
   
-  return {
-    generalStat: (
+  return (
       <>
         Total issues {data?.length}<br/>
         Total durations {duration}<br/>
@@ -24,9 +23,5 @@ export const useIssuesStat = () => {
         Engineers {people?.length}
       </>
     )
-  }
 }
 
-const countDuration = (issues: Issue[] | undefined) => {
-  return issues ? issues.reduce((acc, it) => acc + it.duration, 0) : 0;
-}
