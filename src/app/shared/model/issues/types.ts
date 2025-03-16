@@ -1,3 +1,4 @@
+
 export interface Issue {
   name: string;
   type: IssueType;
@@ -9,6 +10,7 @@ export interface Issue {
   project: string;
   startDate: number;
   endDate: number;
+  duration: number;
 }
 
 export enum IssueType {
