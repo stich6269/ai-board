@@ -1,20 +1,25 @@
-import {StatisticStyled} from "./Statistic.styled.ts";
-import {Chart} from "./components/chart";
-import {Filter} from "./components/filter";
-import {Overview} from "./components/overview";
-import {FilterForm} from "./components/filter/Filter.tsx";
-import {useState} from "react";
-import {useQueryIssues} from "./use-query-issues.ts";
+import {memo, useState} from "react";
 
-export const Statistic = () => {
-  const [filter, setFilter] = useState<FilterForm>({} as FilterForm);
-  const {data} = useQueryIssues(filter);
+import {ChartRow, StatisticStyled} from "./Statistic.styled.ts";
+import {IssueFilters, useIssues} from "@models/issues";
+import {ChartStat} from "./components/ChartStat";
+import {Overview} from "./components/Overview";
+import {Filter} from "./components/Filter";
+import {Chart} from "./components/Chart";
+
+export const Statistic = memo(() => {
+  const [filter, setFilter] = useState<IssueFilters>({});
+  const {data} = useIssues(filter);
   
   return (
     <StatisticStyled>
       <Overview />
       <Filter onFilterChange={setFilter} />
-      <Chart issues={data} />
+      
+      <ChartRow>
+        <Chart issues={data} />
+        <ChartStat issues={data} />
+      </ChartRow>
     </StatisticStyled>
   )
-}
+})
