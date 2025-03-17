@@ -1,13 +1,13 @@
-import {memo} from "react";
-import {Issue} from "@models/issues";
+import {ChartsItemContentProps} from "@mui/x-charts/ChartsTooltip/ChartsItemTooltipContent";
 import {Paper} from "@mui/material";
+import {memo} from "react";
 import dayjs from "dayjs";
+import {Issue} from "@models/issues";
 
-export const Tooltip = memo((props: {
-  itemData: {dataIndex: number},
-  series: {data: {item: Issue}[]}
-}) => {
-  const item = props.series.data[props.itemData.dataIndex].item;
+export const Tooltip = memo(({itemData, series}: ChartsItemContentProps<any>) => {
+  const dataIndex = itemData.dataIndex as number;
+  const dataItem = series.data[dataIndex];
+  const item = dataItem.item as Issue;
   
   return (
     <Paper sx={{padding: '8px 12px', lineHeight: 1.25}}>

@@ -60,7 +60,7 @@ export const Chart = memo(({issues}: {issues?: Issue[]}) => {
         />}
         <ChartsYAxis />
         <ChartsXAxis disableTicks={true} />
-        <ChartsTooltip trigger='item' itemContent={Tooltip} />
+        <ChartsTooltip trigger='item' slots={{itemContent: Tooltip}} />
       </ResponsiveChartContainer>
     </ChartStyled>
   )

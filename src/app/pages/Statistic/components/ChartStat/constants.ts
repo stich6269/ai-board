@@ -1,4 +1,4 @@
-import {IssueType} from "../../../../shared/models/issues/types.ts";
+import {IssueType} from "@models/issues";
 
 export const LABEL_MAP: Record<IssueType, string> = {
   [IssueType.BUG]: 'Bugfix',
