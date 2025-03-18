@@ -9,7 +9,7 @@ import {Chart} from "./components/Chart";
 
 export const Statistic = memo(() => {
   const [filter, setFilter] = useState<IssueFilters>({});
-  const {data} = useIssues(filter);
+  const {data, isFetching} = useIssues(filter);
   
   return (
     <StatisticStyled>
@@ -17,8 +17,8 @@ export const Statistic = memo(() => {
       <Filter onFilterChange={setFilter} />
       
       <ChartRow>
-        <Chart issues={data} />
-        <ChartStat issues={data} />
+        <Chart issues={data} isFetching={isFetching} />
+        <ChartStat issues={data} isFetching={isFetching} />
       </ChartRow>
     </StatisticStyled>
   )

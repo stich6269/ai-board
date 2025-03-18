@@ -10,11 +10,17 @@ import {
 import {memo} from "react";
 
 import {useChartData} from "./use-chart-data.ts";
-import {ChartStyled} from "./Chart.styled.ts";
+import {ChartOverlay, ChartStyled} from "./Chart.styled.ts";
 import {Issue} from "@models/issues";
 import {Tooltip} from "./Tooltip.tsx";
+import Typography from "@mui/material/Typography";
 
-export const Chart = memo(({issues}: {issues?: Issue[]}) => {
+interface ChartProps {
+  issues?: Issue[];
+  isFetching: boolean;
+}
+
+export const Chart = memo(({issues, isFetching}:ChartProps ) => {
   const {
     aiSeries,
     noAiSeries,
@@ -25,6 +31,10 @@ export const Chart = memo(({issues}: {issues?: Issue[]}) => {
   
   return (
     <ChartStyled>
+      {isFetching && <ChartOverlay>
+        <Typography>Loading data...</Typography>
+      </ChartOverlay>}
+      
       <ResponsiveChartContainer
         margin={{ top: 10, right: 50, bottom: 5, left: 30 }}
         xAxis={[{ id: 'a1', min: 0, max: 20 },]} // number to limit xAxis to show data (autoscale does not fit)
