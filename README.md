@@ -1,54 +1,127 @@
-# React + TypeScript + Vite
+# Ai-board
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Ai-board is a demo project powered by Vite. It includes a frontend client and a mock backend using `json-server`.
 
-Currently, two official plugins are available:
+## Installation
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+To get started, clone this repository and install the dependencies:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```sh
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Available Scripts
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Development
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+Start both the frontend and backend in development mode:
+
+```sh
+npm run dev
 ```
+
+This will run:
+
+- `dev:client` – Vite development server
+- `dev:server` – JSON Server on port `3000`
+
+Alternatively, you can start them separately:
+
+```sh
+npm run dev:client  # Starts Vite
+npm run dev:server  # Starts JSON Server
+```
+
+### Build
+
+Compile the TypeScript project and build the frontend:
+
+```sh
+npm run build
+```
+
+### Linting
+
+Check code quality using ESLint:
+
+```sh
+npm run lint
+```
+
+### Preview
+
+Run a local preview of the production build:
+
+```sh
+npm run preview
+```
+
+### Testing
+
+Run all tests using Vitest:
+
+```sh
+npm run test
+```
+
+Start the Vitest UI mode:
+
+```sh
+npm run test:ui
+```
+
+## Database (db.json)
+
+The project includes a mock database file `db.json`, which is used by `json-server` to simulate a backend API.
+
+### Structure
+
+#### Engineers
+```json
+{
+  "id": "string",
+  "name": "string"
+}
+```
+
+#### Teams
+```json
+{
+  "id": "string",
+  "name": "string",
+  "engineers": ["string"]
+}
+```
+
+#### Projects
+```json
+{
+  "id": "string",
+  "name": "string",
+  "teams": ["string"]
+}
+```
+
+#### Issues
+```json
+{
+  "id": "string",
+  "name": "string",
+  "type": "string",
+  "team": "string",
+  "engineer": "string",
+  "project": "string",
+  "startDate": "number",
+  "endDate": "number"
+}
+```
+## Dependencies
+
+- [Vite](https://vitejs.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [ESLint](https://eslint.org/)
+- [Vitest](https://vitest.dev/)
+- [JSON Server](https://github.com/typicode/json-server)
+- [MUI](https://mui.com/)
+- [React Query](https://tanstack.com/query/latest)
+- [React Hook Form](https://react-hook-form.com/)

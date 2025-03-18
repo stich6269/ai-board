@@ -9,7 +9,7 @@
     "dev:server": "json-server db.json -p 3000",
     "build": "tsc -b && vite build",
     "lint": "eslint ai-board",
-    "preview": "vite preview",
+    "preview": "concurrently \"vite preview\" \"npm run dev:server\"",
     "test": "vitest",
     "test:ui": "vitest --ui"
   },

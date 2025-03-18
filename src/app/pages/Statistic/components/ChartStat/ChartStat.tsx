@@ -38,43 +38,42 @@ export const ChartStat = memo(({issues, isFetching}: ChartStatProps) => {
   
   return (
     <ChartStatStyled>
-        <Section>
-          <SectionTitle>Issues overview</SectionTitle>
-          
-          {Object.entries(typeIssuesStatistic)
-          .map(([issueType, typeStat], i) => (
-            <SectionRow key={i}>
-              <Text>{LABEL_MAP[issueType as IssueType]}</Text>
-              <Text>{typeStat.percentage}% ({typeStat.items} issues)</Text>
-            </SectionRow>
-          ))
-          }
-        </Section>
+      <Section>
+        <SectionTitle>Issues overview</SectionTitle>
         
-        <Section>
-          <SectionTitle>AI statistic</SectionTitle>
-          <SectionRow>
-            <Text>AI performance boos</Text>
-            <Text>{aiStatistic.aiBoostPercentage || '-'}%</Text>
+        {Object.entries(typeIssuesStatistic)
+        .map(([issueType, typeStat], i) => (
+          <SectionRow key={i}>
+            <Text>{LABEL_MAP[issueType as IssueType]}</Text>
+            <Text>{typeStat.percentage}% ({typeStat.items} issues)</Text>
           </SectionRow>
-          <SectionRow>
-            <Text>AI usage percentage</Text>
-            <Text>{aiStatistic.aiUsagePercentage}%</Text>
-          </SectionRow>
-          <SectionRow>
-            <Text>Cycle time with assistance</Text>
-            <Text>{aiStatistic.aiCycleTime} hours</Text>
-          </SectionRow>
-          <SectionRow>
-            <Text>Cycle time with no assistant</Text>
-            <Text>{aiStatistic.nonAiCycleTime} hours</Text>
-          </SectionRow>
-          <SectionRow>
-            <Text>Average cycle time</Text>
-            <Text>{aiStatistic.avgCycleTime} horus</Text>
-          </SectionRow>
-        </Section>
-      )
+        ))
+        }
+      </Section>
+      
+      <Section>
+        <SectionTitle>AI statistic</SectionTitle>
+        <SectionRow>
+          <Text>AI performance boos</Text>
+          <Text>{aiStatistic.aiBoostPercentage || '-'}%</Text>
+        </SectionRow>
+        <SectionRow>
+          <Text>AI usage percentage</Text>
+          <Text>{aiStatistic.aiUsagePercentage}%</Text>
+        </SectionRow>
+        <SectionRow>
+          <Text>Cycle time with assistance</Text>
+          <Text>{aiStatistic.aiCycleTime} hours</Text>
+        </SectionRow>
+        <SectionRow>
+          <Text>Cycle time with no assistant</Text>
+          <Text>{aiStatistic.nonAiCycleTime} hours</Text>
+        </SectionRow>
+        <SectionRow>
+          <Text>Average cycle time</Text>
+          <Text>{aiStatistic.avgCycleTime} horus</Text>
+        </SectionRow>
+      </Section>
       
     </ChartStatStyled>
   )
