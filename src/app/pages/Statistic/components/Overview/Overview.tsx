@@ -16,27 +16,27 @@ export const Overview = memo(() => {
   return (
     <OverviewStyled>
       <Stack direction="row" spacing={2}>
-        <DemoPaper variant="elevation">
+        <DemoPaper variant="elevation" data-testid="issues-block">
           <Title>Issues closed</Title>
           <Value>{data?.length}</Value>
         </DemoPaper>
         
-        <DemoPaper variant="elevation">
+        <DemoPaper variant="elevation" data-testid="engineers-block">
           <Title>Engineers</Title>
           <Value>{engineers?.length}</Value>
         </DemoPaper>
         
-        <DemoPaper variant="elevation">
+        <DemoPaper variant="elevation" data-testid="working-time-block">
           <Title>Working time</Title>
           <Value>{duration}h</Value>
         </DemoPaper>
         
-        <DemoPaper variant="elevation">
+        <DemoPaper variant="elevation" data-testid="ai-used-block">
           <Title>Ai used</Title>
           <Value>{aiUsageDuration} h</Value>
         </DemoPaper>
         
-        <DemoPaper variant="elevation">
+        <DemoPaper variant="elevation" data-testid="ai-boost-block">
           <Title>AI usage boost</Title>
           <Value>{aiBoostPercentage}%</Value>
         </DemoPaper>

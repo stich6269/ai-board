@@ -28,3 +28,12 @@ export const Text = styled(Typography)`
     font-size: 14px;
     color: gray;
 `
+
+export const NoItemsFound = styled(Box)`
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    color: gray;
+`
