@@ -9,7 +9,7 @@ import {useIssues} from "@models/issues";
 
 export const Overview = memo(() => {
   const {data, isLoading} = useIssues();
-  const {data: engineers, isLoading: isTeamLoading} = useEngineers();
+  const {data: engineers, isFetching: isTeamLoading} = useEngineers();
   const duration = useMemo(() => countDuration(data), [data])
   const {aiUsageDuration, aiBoostPercentage} = useMemo(() => aiIssuesStat(data), [data])
   

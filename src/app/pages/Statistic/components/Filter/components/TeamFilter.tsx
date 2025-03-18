@@ -26,13 +26,8 @@ export const TeamFilter = ({project, setValue, ...props}: TeamFilterProps) => {
   useEffect(() => {
     if(!data?.length) return;
     // autofill if only one option in a list
-    if(!project || project.teams.length !== 1) {
-      setValue(props.name, null);
-      console.log('>>> null')
-    } else {
-      setValue(props.name, options[0])
-      console.log('>>> value', )
-    }
+    if(!project || project.teams.length !== 1) setValue(props.name, null);
+    else setValue(props.name, options[0])
   }, [project]);
   
   return <SelectControlled

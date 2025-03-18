@@ -47,6 +47,7 @@ export const Chart = memo(({issues, isFetching}:ChartProps ) => {
         
         <ScatterPlot />
         <ChartsGrid vertical horizontal />
+        
         {aiCycleTime && <ChartsReferenceLine
           y={aiCycleTime}
           lineStyle={{ strokeDasharray: '5 5', stroke: '#76b7b2', strokeWidth: 2}}
