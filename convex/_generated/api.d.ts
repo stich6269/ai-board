@@ -10,9 +10,12 @@
 
 import type * as actions from "../actions.js";
 import type * as keys from "../keys.js";
+import type * as liquidity from "../liquidity.js";
 import type * as market from "../market.js";
+import type * as positions from "../positions.js";
 import type * as scanResults from "../scanResults.js";
 import type * as scanner from "../scanner.js";
+import type * as wick from "../wick.js";
 
 import type {
   ApiFromModules,
@@ -23,9 +26,12 @@ import type {
 declare const fullApi: ApiFromModules<{
   actions: typeof actions;
   keys: typeof keys;
+  liquidity: typeof liquidity;
   market: typeof market;
+  positions: typeof positions;
   scanResults: typeof scanResults;
   scanner: typeof scanner;
+  wick: typeof wick;
 }>;
 
 /**

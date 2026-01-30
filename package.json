@@ -18,7 +18,9 @@
     "ccxt": "^4.4.35",
     "convex": "^1.17.0",
     "dayjs": "^1.11.13",
-    "protobufjs": "^7.3.0"
+    "ethers": "^6.13.4",
+    "protobufjs": "^7.3.0",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

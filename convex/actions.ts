@@ -4,50 +4,38 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import ccxt from "ccxt";
+import { Wallet } from "ethers";
 
-export const validateAndSave = action({
+export const validateAndSaveWallet = action({
     args: {
-        exchangeId: v.string(),
-        apiKey: v.string(),
-        secretKey: v.string(),
+        privateKey: v.string(),
         label: v.string(),
     },
     handler: async (ctx, args) => {
         try {
-            // 1. Instantiate Exchange
-            // @ts-ignore - ccxt indexing
-            const exchangeClass = (ccxt as any)[args.exchangeId];
-            if (!exchangeClass) {
-                return { success: false, error: `Exchange ${args.exchangeId} not supported` };
-            }
+            const wallet = new Wallet(args.privateKey);
+            const walletAddress = wallet.address;
 
-            const exchange = new exchangeClass({
-                apiKey: args.apiKey,
-                secret: args.secretKey,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-                },
+            const exchange = new ccxt.hyperliquid({
+                walletAddress,
+                privateKey: args.privateKey,
+                enableRateLimit: true,
             });
 
-            // Bybit-specific: Try bypass hostname if blocked
-            if (args.exchangeId === 'bybit') {
-                exchange.hostname = 'bytick.com';
-            }
+            await exchange.loadMarkets();
+            const balance = await exchange.fetchBalance();
+            const usdcBalance = balance['USDC']?.total || 0;
 
-            // 2. Test Connection
-            await exchange.fetchBalance();
-
-            // 3. Save to DB via Internal Mutation
-            await ctx.runMutation(internal.keys.saveKeyToDb, {
-                userId: "me", // Mocked for MVP
-                exchangeId: args.exchangeId,
-                apiKey: args.apiKey,
-                secretKey: args.secretKey,
+            await ctx.runMutation(internal.keys.saveWalletInternal, {
+                userId: "me",
                 label: args.label,
+                walletAddress,
+                privateKey: args.privateKey,
                 isValid: true,
+                usdcBalance,
             });
 
-            return { success: true };
+            return { success: true, walletAddress, usdcBalance };
         } catch (error: any) {
             console.error("Validation failed:", error);
             return { success: false, error: error.message || "Unknown connection error" };

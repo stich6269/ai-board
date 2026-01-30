@@ -1,68 +1,61 @@
 import { Router } from 'express';
 import ccxt from 'ccxt';
-import { saveKeyToConvex } from '../lib/convexClient.js';
+import { Wallet } from 'ethers';
+import { saveWalletToConvex } from '../lib/convexClient.js';
 
 const router = Router();
 
-// POST /api/keys/validate
 router.post('/validate', async (req, res) => {
     try {
-        const { exchangeId, apiKey, secretKey, label } = req.body;
+        const { privateKey, label } = req.body;
 
-        // Validate input
-        if (!exchangeId || !apiKey || !secretKey || !label) {
+        if (!privateKey || !label) {
             return res.status(400).json({
-                error: 'Missing required fields: exchangeId, apiKey, secretKey, label'
+                error: 'Missing required fields: privateKey, label'
             });
         }
 
-        // Instantiate exchange
-        const exchangeClass = (ccxt as any)[exchangeId];
-        if (!exchangeClass) {
+        if (!/^0x[a-fA-F0-9]{64}$/.test(privateKey)) {
             return res.status(400).json({
-                error: `Exchange ${exchangeId} not supported`
+                error: 'Invalid private key format. Must be 0x followed by 64 hex characters.'
             });
         }
 
-        const exchange = new exchangeClass({
-            apiKey,
-            secret: secretKey,
+        const wallet = new Wallet(privateKey);
+        const walletAddress = wallet.address;
+
+        const exchange = new ccxt.hyperliquid({
+            walletAddress,
+            privateKey,
+            enableRateLimit: true,
         });
 
-        // Bybit-specific hostname bypass
-        if (exchangeId === 'bybit') {
-            exchange.hostname = 'bytick.com';
-        }
+        await exchange.loadMarkets();
+        const balance = await exchange.fetchBalance();
+        console.log('Full balance response:', JSON.stringify(balance, null, 2));
+        const usdcBalance = balance['USDC']?.total || 0;
+        console.log('USDC balance extracted:', usdcBalance);
 
-        // Test connection
-        await exchange.fetchBalance();
-
-        // Save to Convex
-        await saveKeyToConvex({
-            exchangeId,
-            apiKey,
-            secretKey,
+        await saveWalletToConvex({
             label,
+            walletAddress,
+            privateKey,
+            usdcBalance,
         });
 
         res.json({
             success: true,
-            message: 'API key validated and saved successfully'
+            message: 'Wallet validated and saved successfully',
+            walletAddress,
+            usdcBalance,
         });
 
     } catch (error: any) {
         console.error('Validation error:', error);
 
-        // User-friendly error messages
-        if (error.message?.includes('403')) {
-            return res.status(403).json({
-                error: 'API access forbidden. Please check your API key permissions.'
-            });
-        }
-
-        if (error.message?.includes('401') || error.message?.includes('authentication')) {
-            return res.status(401).json({
-                error: 'Invalid API credentials. Please check your API key and secret.'
+        if (error.message?.includes('invalid private key')) {
+            return res.status(400).json({
+                error: 'Invalid private key. Please check the format.'
             });
         }
 

@@ -9,14 +9,13 @@ if (!CONVEX_URL) {
 
 export const convexClient = new ConvexHttpClient(CONVEX_URL);
 
-// Helper to save validated key to Convex
-export async function saveKeyToConvex(data: {
-    exchangeId: string;
-    apiKey: string;
-    secretKey: string;
+export async function saveWalletToConvex(data: {
     label: string;
+    walletAddress: string;
+    privateKey: string;
+    usdcBalance?: number;
 }) {
-    return await convexClient.mutation(api.keys.saveKey, data);
+    return await convexClient.mutation(api.keys.saveWallet, data);
 }
 
 // Helper to save scan results to Convex
@@ -27,17 +26,35 @@ export async function saveScanResultsToConvex(data: {
     return await convexClient.mutation(api.scanResults.saveScanResults, data);
 }
 
-// Helper to update opportunities (called by harvester)
 export async function updateOpportunitiesToConvex(data: {
     symbol: string;
-    exchangeId: string;
+    exchangeId: "hyperliquid";
     price: number;
     fundingRate: number;
     apr: number;
     volume24h: number;
     url?: string;
     timestamp: number;
+    history?: { rate: number; timestamp: number }[];
+    averageApr3d?: number;
+    tags?: string[];
+    spread?: number;
+    isSpotAvailable: boolean;
+    spotSymbol?: string;
+    perpSymbol?: string;
 }[]) {
     return await convexClient.mutation(api.scanner.updateOpportunities, { data });
+}
+
+// Helper to update scanner heartbeat info
+export async function updateScannerStatusToConvex(data: {
+    exchangeId: string;
+    instanceId: string;
+    lastScanAt: number;
+    nextScanAt: number;
+    status: string;
+    version?: string;
+}) {
+    return await convexClient.mutation(api.scanner.updateScannerStatus, data);
 }
 
