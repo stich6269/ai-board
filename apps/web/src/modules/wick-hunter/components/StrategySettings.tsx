@@ -29,6 +29,8 @@ export function StrategySettings({ config }: StrategySettingsProps) {
         stopLossPercent: config.stopLossPercent || 3.0,
         softTimeoutMs: config.softTimeoutMs || 30000,
         minZScoreExit: config.minZScoreExit || 0.1,
+        hardTimeoutMs: config.hardTimeoutMs || 1200000,
+        safetyWindowMs: config.safetyWindowMs || 60000,
     });
     const [isDirty, setIsDirty] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -45,6 +47,8 @@ export function StrategySettings({ config }: StrategySettingsProps) {
             stopLossPercent: config.stopLossPercent || 3.0,
             softTimeoutMs: config.softTimeoutMs || 30000,
             minZScoreExit: config.minZScoreExit || 0.1,
+            hardTimeoutMs: config.hardTimeoutMs || 1200000,
+            safetyWindowMs: config.safetyWindowMs || 60000,
         });
         setIsDirty(false);
     }, [config._id, config.symbol]);
@@ -70,6 +74,8 @@ export function StrategySettings({ config }: StrategySettingsProps) {
                 stopLossPercent: localConfig.stopLossPercent,
                 softTimeoutMs: localConfig.softTimeoutMs,
                 minZScoreExit: localConfig.minZScoreExit,
+                hardTimeoutMs: localConfig.hardTimeoutMs,
+                safetyWindowMs: localConfig.safetyWindowMs,
             });
             setIsDirty(false);
         } catch (error) {
@@ -86,36 +92,33 @@ export function StrategySettings({ config }: StrategySettingsProps) {
             <div className="p-4 border-b border-gray-800">
                 <h3 className="text-sm font-medium text-gray-300">Strategy Settings</h3>
             </div>
-            
+
             <div className="flex-1 flex flex-col">
                 <div className="grid grid-cols-3 gap-px bg-gray-800 p-2">
                     <button
                         onClick={() => setActiveSection('entry')}
-                        className={`py-2 text-xs font-medium transition-colors ${
-                            activeSection === 'entry'
+                        className={`py-2 text-xs font-medium transition-colors ${activeSection === 'entry'
                                 ? 'bg-green-600/20 text-green-400'
                                 : 'bg-[#0f0f0f] text-gray-500 hover:text-gray-300'
-                        }`}
+                            }`}
                     >
                         Entry
                     </button>
                     <button
                         onClick={() => setActiveSection('dca')}
-                        className={`py-2 text-xs font-medium transition-colors ${
-                            activeSection === 'dca'
+                        className={`py-2 text-xs font-medium transition-colors ${activeSection === 'dca'
                                 ? 'bg-orange-600/20 text-orange-400'
                                 : 'bg-[#0f0f0f] text-gray-500 hover:text-gray-300'
-                        }`}
+                            }`}
                     >
                         DCA
                     </button>
                     <button
                         onClick={() => setActiveSection('exit')}
-                        className={`py-2 text-xs font-medium transition-colors ${
-                            activeSection === 'exit'
+                        className={`py-2 text-xs font-medium transition-colors ${activeSection === 'exit'
                                 ? 'bg-red-600/20 text-red-400'
                                 : 'bg-[#0f0f0f] text-gray-500 hover:text-gray-300'
-                        }`}
+                            }`}
                     >
                         Exit
                     </button>
@@ -250,6 +253,34 @@ export function StrategySettings({ config }: StrategySettingsProps) {
                             </div>
 
                             <div className="space-y-2">
+                                <Label className="text-xs text-gray-400">Safety Window (seconds)</Label>
+                                <Input
+                                    type="number"
+                                    value={Math.round(localConfig.safetyWindowMs / 1000)}
+                                    onChange={(e) => handleChange('safetyWindowMs', (parseInt(e.target.value) || 0) * 1000)}
+                                    min={10}
+                                    max={300}
+                                    step={10}
+                                    className="w-full bg-black/50 border-gray-700 text-white text-lg"
+                                />
+                                <p className="text-[10px] text-gray-500 italic">No loss-making exits allowed during this time.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs text-gray-400">Hard Timeout (minutes)</Label>
+                                <Input
+                                    type="number"
+                                    value={Math.round(localConfig.hardTimeoutMs / 60000)}
+                                    onChange={(e) => handleChange('hardTimeoutMs', (parseInt(e.target.value) || 0) * 60000)}
+                                    min={5}
+                                    max={120}
+                                    step={5}
+                                    className="w-full bg-black/50 border-gray-700 text-white text-lg"
+                                />
+                                <p className="text-[10px] text-gray-500 italic">Emergency force exit after this time.</p>
+                            </div>
+
+                            <div className="space-y-2">
                                 <Label className="text-xs text-gray-400">Hard Stop Loss %</Label>
                                 <Input
                                     type="number"
@@ -268,9 +299,9 @@ export function StrategySettings({ config }: StrategySettingsProps) {
 
             <div className="p-4 border-t border-gray-800">
                 {isDirty && (
-                    <Button 
-                        onClick={handleSave} 
-                        className="w-full bg-blue-600 hover:bg-blue-700" 
+                    <Button
+                        onClick={handleSave}
+                        className="w-full bg-blue-600 hover:bg-blue-700"
                         size="sm"
                         disabled={isSaving}
                     >

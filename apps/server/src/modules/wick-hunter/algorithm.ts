@@ -36,10 +36,8 @@ export interface AlgorithmState {
 
 export interface Stats {
     median: number;
-    softTimeoutMs: number;
-    minZScoreExit: number;
-    hardTimeoutMs: number;
-    safetyWindowMs: number;
+    mad: number;
+    zScore: number;
 }
 
 export type SignalType = 'BUY' | 'SELL' | undefined;
@@ -83,7 +81,7 @@ export class AlgorithmLayer {
     private lastSignalTime: number = 0;
     private minSignalInterval: number = 500;
     private currentPrice: number = 0;
-    private currentStats: Stats = { median: 0, softTimeoutMs: 0, minZScoreExit: 0, hardTimeoutMs: 0, safetyWindowMs: 0 };
+    private currentStats: Stats = { median: 0, mad: 0, zScore: 0 };
     private onLog?: LogHandler;
     private lastLogTime: number = 0;
     private minLogInterval: number = 20;
@@ -115,8 +113,8 @@ export class AlgorithmLayer {
             snapshot: {
                 price: this.currentPrice,
                 median: this.currentStats.median,
-                mad: 0, // Placeholder as mad is removed from Stats interface
-                zScore: 0, // Placeholder as zScore is removed from Stats interface
+                mad: this.currentStats.mad,
+                zScore: this.currentStats.zScore,
                 velocity: this.velocity,
                 acceleration: this.acceleration,
                 positionState: state.positionState,
@@ -132,13 +130,7 @@ export class AlgorithmLayer {
         const stats = this.rollingStats.update(price);
         this.samplesCollected++;
         this.currentPrice = price;
-        this.currentStats = {
-            median: stats.median,
-            softTimeoutMs: this.config.softTimeoutMs,
-            minZScoreExit: this.config.minZScoreExit,
-            hardTimeoutMs: this.config.hardTimeoutMs,
-            safetyWindowMs: this.config.safetyWindowMs
-        };
+        this.currentStats = stats;
         this.updateDifferentialAnalysis(price, time);
         return stats;
     }
@@ -203,7 +195,6 @@ export class AlgorithmLayer {
 
             // 1.2.b Dynamic Target Z-Score
             let targetZScore = this.config.minZScoreExit;
-
             if (holdTime > this.config.softTimeoutMs) {
                 targetZScore = -1.0; // After 30s: allow exit at Z >= -1.0
                 if (holdTime > this.config.softTimeoutMs * 2) {

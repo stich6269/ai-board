@@ -19,6 +19,8 @@ export interface EngineConfig {
     minMadThreshold: number;
     softTimeoutMs: number;
     minZScoreExit: number;
+    hardTimeoutMs: number;
+    safetyWindowMs: number;
 }
 
 export class WickHunterEngine {
@@ -63,7 +65,9 @@ export class WickHunterEngine {
             minDcaPriceDeviationPercent: config.minDcaPriceDeviationPercent,
             minMadThreshold: config.minMadThreshold,
             softTimeoutMs: config.softTimeoutMs,
-            minZScoreExit: config.minZScoreExit
+            minZScoreExit: config.minZScoreExit,
+            hardTimeoutMs: config.hardTimeoutMs,
+            safetyWindowMs: config.safetyWindowMs
         });
 
         // Wire up log handler
