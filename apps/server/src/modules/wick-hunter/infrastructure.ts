@@ -115,24 +115,73 @@ export class InfrastructureLayer {
     }
 
     private async checkStateAsync() {
-        if (!this.position.roundId) return;
         try {
+            // 1. Fetch current control state from Convex
             const state = await convexClient.query(api.wick.getState, {
                 configId: this.config.configId as any
             });
 
-            if (state && state.status === 'MANUAL_CLOSE' && this.position.state === 'LONG') {
-                console.log('🔴 MANUAL_CLOSE detected - closing position');
-                this.onManualClose?.();
+            if (!state) return;
 
+            // 2. Handle Manual Interventions (MANUAL_CLOSE / PANIC_CLOSE)
+            const isManualAction = state.status === 'MANUAL_CLOSE' || state.status === 'PANIC_CLOSE';
+
+            if (isManualAction && this.position.state === 'LONG') {
+                console.log(`🔴 Manual Intervention [${state.status}] detected - Triggering exit...`);
+
+                // Clear the status in Convex FIRST to avoid double-triggering
+                // but keep it active locally until the sell is executed
                 await convexClient.mutation(api.wick.updateState, {
                     configId: this.config.configId as any,
                     status: 'IDLE'
                 });
+
+                // Trigger the engine's sell logic
+                this.onManualClose?.();
+                return;
+            }
+
+            // 3. Periodic Sync: Check if our local "LONG" state matches the DB's "OPEN" rounds
+            if (this.position.state === 'LONG' && this.position.roundId) {
+                const openRound = await convexClient.query(api.wick.getRound, {
+                    id: this.position.roundId as any
+                });
+
+                // If the round we are tracking disappeared or was closed externally
+                if (!openRound || openRound.status !== 'OPEN') {
+                    console.warn(`🔄 Sync Mismatch: Round ${this.position.roundId} is ${openRound?.status || 'DELETED'} in DB. Resetting engine to NONE.`);
+                    this.resetLocalState();
+                }
+            }
+
+            // 4. Ghost Position Recovery: If we think we are "NONE" but DB has an "OPEN" round
+            if (this.position.state === 'NONE' && !this.position.isPersisting) {
+                const openRound = await convexClient.query(api.wick.getOpenRound, {
+                    configId: this.config.configId as any
+                });
+
+                if (openRound) {
+                    console.log(`👻 Ghost Position Found: Recovering round ${openRound._id}`);
+                    this.position.roundId = openRound._id;
+                    this.position.state = 'LONG';
+                    this.position.entryPrice = openRound.buyPrice;
+                    this.position.totalAmount = openRound.buyAmount;
+                    this.position.entryTime = openRound.buyTime;
+                }
             }
         } catch (e) {
-            // Ignore network errors
+            // Silently ignore sync/network hiccups to keep engine running
         }
+    }
+
+    private resetLocalState() {
+        this.position.state = 'NONE';
+        this.position.roundId = null;
+        this.position.entryPrice = 0;
+        this.position.totalAmount = 0;
+        this.position.dcaCount = 0;
+        this.position.entryTime = undefined;
+        this.position.isPersisting = false;
     }
 
     public updateHeatmap(price: number, size: number, time: number) {
@@ -180,7 +229,7 @@ export class InfrastructureLayer {
         }
     }
 
-    public async openPosition(price: number, amount: number): Promise<string | null> {
+    public async openPosition(price: number, amount: number, timestamp: number, snapshot: any): Promise<string | null> {
         this.position.isPersisting = true;
 
         const isDCA = this.position.state === 'LONG' && this.position.roundId !== null;
@@ -194,14 +243,21 @@ export class InfrastructureLayer {
                     configId: this.config.configId as any,
                     symbol: this.config.symbol,
                     buyPrice: price,
-                    buyAmount: amount
+                    buyAmount: amount,
+                    buyTime: timestamp,
+                    snapshot: {
+                        median: snapshot.median,
+                        mad: snapshot.mad,
+                        zScore: snapshot.zScore,
+                        velocity: snapshot.velocity || 0,
+                        acceleration: snapshot.acceleration || 0
+                    }
                 });
                 this.position.roundId = id;
                 this.position.entryPrice = price;
                 this.position.dcaCount = 0;
                 this.position.totalAmount = amount;
-                this.position.entryTime = Date.now();
-                this.position.entryTime = Date.now();
+                this.position.entryTime = timestamp; // Use exchange time
                 return id;
             } catch (e: any) {
                 console.error('❌ WHE openRound Error Details:', {
@@ -220,7 +276,15 @@ export class InfrastructureLayer {
                 await convexClient.mutation(api.wick.averagePosition, {
                     roundId: this.position.roundId as any,
                     newPrice: price,
-                    newAmount: amount
+                    newAmount: amount,
+                    timestamp: timestamp,
+                    snapshot: {
+                        median: snapshot.median,
+                        mad: snapshot.mad,
+                        zScore: snapshot.zScore,
+                        velocity: snapshot.velocity || 0,
+                        acceleration: snapshot.acceleration || 0
+                    }
                 });
 
                 // Calculate new average price locally (instant, no DB query needed)
@@ -244,26 +308,32 @@ export class InfrastructureLayer {
         }
     }
 
-    public async closePosition(price: number, status: 'CLOSED' | 'STOPPED_OUT') {
-        this.position.isPersisting = true;
-        this.position.state = 'NONE';
-        this.position.entryPrice = 0;
-        this.position.dcaCount = 0;
-        this.position.totalAmount = 0;
-        this.position.entryTime = undefined;
+    public async closePosition(price: number, status: 'CLOSED' | 'STOPPED_OUT', timestamp?: number, snapshot?: any) {
+        const roundToClose = this.position.roundId;
 
-        if (this.position.roundId) {
+        this.position.isPersisting = true;
+        this.resetLocalState();
+
+        if (roundToClose) {
             try {
                 await convexClient.mutation(api.wick.closeRound, {
-                    roundId: this.position.roundId as any,
+                    roundId: roundToClose as any,
                     sellPrice: price,
-                    status: status
+                    status: status,
+                    sellTime: timestamp,
+                    snapshot: snapshot ? {
+                        median: snapshot.median,
+                        mad: snapshot.mad,
+                        zScore: snapshot.zScore,
+                        velocity: snapshot.velocity || 0,
+                        acceleration: snapshot.acceleration || 0
+                    } : undefined
                 });
+                console.log(`✅ Round ${roundToClose} closed successfully in DB.`);
             } catch (e) {
                 console.error('WHE closeRound Error:', e);
             } finally {
                 this.position.isPersisting = false;
-                this.position.roundId = null;
             }
         } else {
             this.position.isPersisting = false;

@@ -27,6 +27,7 @@ export class WickHunterEngine {
     private infra: InfrastructureLayer;
     private algorithm: AlgorithmLayer;
     private currentPrice: number = 0;
+    private lastPriceTime: number = 0;
     private tradeCount: number = 0;
     private lastLatencyLog: number = 0;
     private lastWsLatency: number = 0;
@@ -72,7 +73,8 @@ export class WickHunterEngine {
 
         // Wire up manual close handler
         this.infra.setManualCloseHandler(() => {
-            this.executeSell(this.currentPrice, 'CLOSED');
+            const stats = this.algorithm.getCurrentStats();
+            this.executeSell(this.currentPrice, 'CLOSED', this.lastPriceTime, stats);
         });
     }
 
@@ -113,6 +115,7 @@ export class WickHunterEngine {
             const stats = this.algorithm.processPrice(price, time);
             const algoTime = performance.now() - algoStart;
             this.currentPrice = price;
+            this.lastPriceTime = time;
 
             // 3. Evaluate signal
             const signalStart = performance.now();
@@ -129,7 +132,7 @@ export class WickHunterEngine {
             if (signal === 'BUY') {
                 this.executeBuy(price, stats, time);
             } else if (signal === 'SELL' && sellReason) {
-                this.executeSell(price, sellReason);
+                this.executeSell(price, sellReason, time, stats);
                 this.infra.saveSignal('SELL', price, stats.zScore, time).catch(console.error);
             }
 
@@ -214,7 +217,7 @@ export class WickHunterEngine {
             return;
         }
 
-        this.infra.openPosition(price, amount)
+        this.infra.openPosition(price, amount, time, stats)
             .then((id) => {
                 if (id) {
                     console.log(`✅ Virtual Position Opened/Updated! RoundID: ${id}`);
@@ -246,8 +249,8 @@ export class WickHunterEngine {
             });
     }
 
-    private executeSell(price: number, status: 'CLOSED' | 'STOPPED_OUT') {
-        this.infra.closePosition(price, status).catch(console.error);
+    private executeSell(price: number, status: 'CLOSED' | 'STOPPED_OUT', timestamp?: number, snapshot?: any) {
+        this.infra.closePosition(price, status, timestamp, snapshot).catch(console.error);
     }
 
     private generateHeartbeat() {

@@ -137,22 +137,24 @@ export default defineSchema({
         zScoreThreshold: v.optional(v.number()), // Z-Score entry threshold (default 2.0)
         windowSize: v.optional(v.number()), // Rolling window size (default 200)
         minMadThreshold: v.optional(v.number()), // Min volatility filter (default 0.001)
-        
+
         // DCA & Averaging
         maxDcaEntries: v.optional(v.number()), // Max DCA entries (0 = disabled, default 2)
         dcaZScoreMultiplier: v.optional(v.number()), // DCA signal multiplier (default 1.3)
         minDcaPriceDeviationPercent: v.optional(v.number()), // Min price step % (default 0.2)
-        
+
         // Exit & Safety
         stopLossPercent: v.number(),     // Hard stop loss %
         softTimeoutMs: v.optional(v.number()), // Soft timeout in ms (default 30000)
         minZScoreExit: v.optional(v.number()), // Min Z-Score for exit (default 0.1)
+        hardTimeoutMs: v.optional(v.number()), // Hard timeout in ms (default 1200000 / 20m)
+        safetyWindowMs: v.optional(v.number()), // Safety window in ms (default 60000 / 1m)
         chartRetentionMinutes: v.optional(v.number()), // Chart data retention (default 10)
-        
+
         // Legacy (deprecated but kept for compatibility)
         buyDipPercent: v.optional(v.number()),
         takeProfitPercent: v.optional(v.number()),
-        
+
         // Volatility status (for UI)
         currentVolatility: v.optional(v.number()), // Current % change in 1 min
     }).index("by_user", ["userId"])
@@ -217,7 +219,7 @@ export default defineSchema({
         timestamp: v.number(),
         level: v.union(v.literal("INFO"), v.literal("WARN"), v.literal("ERROR"), v.literal("SIGNAL")),
         message: v.string(),
-        
+
         // Full snapshot of calculated values
         snapshot: v.object({
             price: v.number(),
@@ -231,4 +233,23 @@ export default defineSchema({
             pnlPercent: v.optional(v.number()),
         }),
     }).index("by_config_time", ["configId", "timestamp"]),
+
+    // Execution orders (BUY, DCA, SELL) with snapshots
+    wick_orders: defineTable({
+        configId: v.id("wick_config"),
+        roundId: v.optional(v.id("wick_rounds")),
+        timestamp: v.number(),
+        type: v.union(v.literal("BUY"), v.literal("DCA"), v.literal("SELL")),
+        price: v.number(),
+        amount: v.number(),
+        snapshot: v.object({
+            median: v.number(),
+            mad: v.number(),
+            zScore: v.number(),
+            velocity: v.number(),
+            acceleration: v.number(),
+        }),
+    }).index("by_config", ["configId"])
+        .index("by_round", ["roundId"])
+        .index("by_config_time", ["configId", "timestamp"]),
 });

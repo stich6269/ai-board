@@ -20,6 +20,10 @@ export interface AlgorithmConfig {
     softTimeoutMs: number;
     // [NEW] Минимальный Z-Score для выхода (покрытие комиссии)
     minZScoreExit: number;
+    // [NEW] Максимальное время удержания позиции (экстренный выход)
+    hardTimeoutMs: number;
+    // [NEW] Окно безопасности (запрет выхода в минус сразу после покупки)
+    safetyWindowMs: number;
 }
 
 export interface AlgorithmState {
@@ -32,8 +36,10 @@ export interface AlgorithmState {
 
 export interface Stats {
     median: number;
-    mad: number;
-    zScore: number;
+    softTimeoutMs: number;
+    minZScoreExit: number;
+    hardTimeoutMs: number;
+    safetyWindowMs: number;
 }
 
 export type SignalType = 'BUY' | 'SELL' | undefined;
@@ -77,7 +83,7 @@ export class AlgorithmLayer {
     private lastSignalTime: number = 0;
     private minSignalInterval: number = 500;
     private currentPrice: number = 0;
-    private currentStats: Stats = { median: 0, mad: 0, zScore: 0 };
+    private currentStats: Stats = { median: 0, softTimeoutMs: 0, minZScoreExit: 0, hardTimeoutMs: 0, safetyWindowMs: 0 };
     private onLog?: LogHandler;
     private lastLogTime: number = 0;
     private minLogInterval: number = 20;
@@ -109,8 +115,8 @@ export class AlgorithmLayer {
             snapshot: {
                 price: this.currentPrice,
                 median: this.currentStats.median,
-                mad: this.currentStats.mad,
-                zScore: this.currentStats.zScore,
+                mad: 0, // Placeholder as mad is removed from Stats interface
+                zScore: 0, // Placeholder as zScore is removed from Stats interface
                 velocity: this.velocity,
                 acceleration: this.acceleration,
                 positionState: state.positionState,
@@ -126,7 +132,13 @@ export class AlgorithmLayer {
         const stats = this.rollingStats.update(price);
         this.samplesCollected++;
         this.currentPrice = price;
-        this.currentStats = stats;
+        this.currentStats = {
+            median: stats.median,
+            softTimeoutMs: this.config.softTimeoutMs,
+            minZScoreExit: this.config.minZScoreExit,
+            hardTimeoutMs: this.config.hardTimeoutMs,
+            safetyWindowMs: this.config.safetyWindowMs
+        };
         this.updateDifferentialAnalysis(price, time);
         return stats;
     }
@@ -179,32 +191,38 @@ export class AlgorithmLayer {
         }
 
         // 1.2 Soft Timeout Exit (Dynamic Target Z-Score)
-        if (state.positionState === 'LONG') {
-            // Базовая цель: вернуться к медиане с учетом комиссии
+        if (state.positionState === 'LONG' && state.entryPrice > 0) {
+            const holdTime = state.entryTime ? (now - state.entryTime) : 0;
+            const pnlPercent = (price - state.entryPrice) / state.entryPrice;
+
+            // 1.2.a Hard Stale Timeout (Emergency backup)
+            if (holdTime > this.config.hardTimeoutMs) {
+                this.log('SIGNAL', `⚠️ HARD STALE! Force exit after ${(holdTime / 60000).toFixed(1)}m. PnL: ${(pnlPercent * 100).toFixed(2)}%`, state);
+                return { signal: 'SELL', sellReason: 'CLOSED' };
+            }
+
+            // 1.2.b Dynamic Target Z-Score
             let targetZScore = this.config.minZScoreExit;
 
-            // Если держим позицию долго, снижаем планку ожиданий
-            const holdTime = state.entryTime ? (now - state.entryTime) : 0;
-
             if (holdTime > this.config.softTimeoutMs) {
-                // Через 30 сек: согласны выйти при Z >= -1.0
-                targetZScore = -1.0;
-
-                // Через 60 сек: согласны выйти при Z >= -1.5
+                targetZScore = -1.0; // After 30s: allow exit at Z >= -1.0
                 if (holdTime > this.config.softTimeoutMs * 2) {
-                    targetZScore = -1.5;
+                    targetZScore = -1.5; // After 60s: allow exit at Z >= -1.5
                 }
             }
 
-            // Проверка выхода
+            // 1.2.c Evaluation
             if (stats.zScore >= targetZScore) {
+                // PROTECTION: No loss-making decay exit during the safety window
+                const isLoss = pnlPercent < -0.0001; // -0.01% as break-even threshold
+                if (isLoss && holdTime < this.config.safetyWindowMs) {
+                    // Stay in trade, wait for recovery or hard stop-loss/timeout
+                    return { signal: undefined };
+                }
 
-                // ЗАЩИТА ОТ ЯМЫ: не продаем, если цена активно падает
-                const isPanicExit = targetZScore < 0; // Мы снизили требования
-                const isPriceCrashing = this.velocity < 0; // Цена летит вниз
-
-                if (isPanicExit && isPriceCrashing) {
-                    // Ждем. Не продаем на красной свече.
+                // PANIC GAP PROTECTION: Don't sell while price is still crashing
+                const isPriceCrashing = this.velocity < 0 || this.acceleration < -5;
+                if (targetZScore < 0 && isPriceCrashing) {
                     return { signal: undefined };
                 }
 
@@ -213,7 +231,7 @@ export class AlgorithmLayer {
                 }
 
                 const exitType = targetZScore < 0 ? 'TIME_DECAY' : 'PROFIT';
-                this.log('SIGNAL', `🔴 ${exitType} Exit! Z: ${stats.zScore.toFixed(2)} (Target: ${targetZScore.toFixed(1)}, Hold: ${(holdTime / 1000).toFixed(0)}s)`, state);
+                this.log('SIGNAL', `🔴 ${exitType} Exit! Z: ${stats.zScore.toFixed(2)}, PnL: ${(pnlPercent * 100).toFixed(2)}% (Hold: ${(holdTime / 1000).toFixed(0)}s)`, state);
                 this.lastSignalTime = now;
                 return { signal: 'SELL', sellReason: 'CLOSED' };
             }

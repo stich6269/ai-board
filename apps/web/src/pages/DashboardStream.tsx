@@ -51,6 +51,7 @@ export default function DashboardStream() {
 
     const statsData = useQuery(api.wick.getStats, config ? { configId: config._id } : "skip");
     const signals = useQuery(api.wick.getSignals, config ? { configId: config._id } : "skip");
+    const orders = useQuery(api.wick.getOrders, config ? { configId: config._id, limit: 100 } : "skip");
     const logs = useQuery(api.wick.getLogs, config ? { configId: config._id, limit: 100 } : "skip");
 
     const { stats, rounds } = statsData || {
@@ -145,7 +146,7 @@ export default function DashboardStream() {
                         <div className="flex-1 overflow-hidden bg-[#0a0a0a] p-2">
                             <StreamChart
                                 ref={chartControllerRef}
-                                signals={isSwitching ? [] : (signals || [])}
+                                trades={isSwitching ? [] : (orders as any[])}
                                 stopLossPrice={slPrice}
                                 takeProfitPrice={tpPrice}
                                 windowSize={effectiveConfig.windowSize}

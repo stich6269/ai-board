@@ -11,14 +11,15 @@ interface MetricData {
     zScore: number;
 }
 
-interface Signal {
+interface ExecutionSignal {
     timestamp: number;
-    type: 'BUY' | 'SELL';
     price: number;
+    type: 'BUY' | 'SELL';
+    zScore: number;
 }
 
 interface StreamChartProps {
-    signals?: Signal[];
+    trades?: ExecutionSignal[];
     stopLossPrice?: number;
     takeProfitPrice?: number;
     windowSize?: number;
@@ -207,42 +208,42 @@ export const StreamChart = forwardRef<ChartController, StreamChartProps>((props,
         }
     }, [stopLossPrice, takeProfitPrice]);
 
-    const updateMarkers = (signals: Signal[]) => {
+    const updateMarkers = (signals: ExecutionSignal[]) => {
         if (!seriesMarkersRef.current || !seriesRef.current?.price) return;
 
-        if (signals && signals.length > 0) {
-            const priceData = seriesRef.current.price.data();
-            if (priceData.length === 0) {
-                seriesMarkersRef.current.setMarkers([]);
-                return;
-            }
-
-            const minTime = priceData[0].time as number;
-            const maxTime = priceData[priceData.length - 1].time as number;
-
-            const markers = signals
-                .map(signal => ({
-                    ...signal,
-                    timeSec: signal.timestamp / 1000
-                }))
-                // Filter: only show signals that fall within the loaded price data range
-                .filter(signal => signal.timeSec >= minTime && signal.timeSec <= maxTime)
-                .map(signal => ({
-                    time: signal.timeSec as any,
-                    position: signal.type === 'BUY' ? 'belowBar' as const : 'aboveBar' as const,
-                    color: signal.type === 'BUY' ? '#22c55e' : '#ef4444',
-                    shape: signal.type === 'BUY' ? 'arrowUp' as const : 'arrowDown' as const,
-                    text: signal.type
-                }));
-            seriesMarkersRef.current.setMarkers(markers);
-        } else {
-            seriesMarkersRef.current.setMarkers([]);
+        const priceData = seriesRef.current.price.data() as any[];
+        if (!priceData || priceData.length === 0) {
+            seriesMarkersRef.current.setMarkers([]); // Clear markers if no price data
+            return;
         }
+
+        const minTime = priceData[0].time as number;
+        const markers: any[] = [];
+
+        signals.forEach(sig => {
+            const timeSec = Math.floor(sig.timestamp / 1000);
+
+            // Allow markers that are >= starting point. 
+            if (timeSec >= minTime) {
+                markers.push({
+                    time: timeSec as any,
+                    position: sig.type === 'BUY' ? 'belowBar' : 'aboveBar',
+                    color: sig.type === 'BUY' ? '#22c55e' : '#ef4444',
+                    shape: sig.type === 'BUY' ? 'arrowUp' : 'arrowDown',
+                    text: sig.type
+                });
+            }
+        });
+
+        // CRITICAL: Lightweight-charts requires markers to be sorted by time ASCENDING
+        markers.sort((a, b) => (a.time as number) - (b.time as number));
+
+        seriesMarkersRef.current.setMarkers(markers);
     };
 
     useEffect(() => {
-        updateMarkers(props.signals || []);
-    }, [props.signals]);
+        updateMarkers(props.trades || []);
+    }, [props.trades]);
 
     // 🔥 ЭКСПОРТ МЕТОДОВ ДЛЯ ХУКА (useImperativeHandle)
     useImperativeHandle(ref, () => ({
@@ -250,10 +251,10 @@ export const StreamChart = forwardRef<ChartController, StreamChartProps>((props,
             if (!seriesRef.current) return;
 
             // Timestamps are in UTC (milliseconds), convert to seconds for lightweight-charts
-            const prices = data.map(d => ({ time: (d.timestamp / 1000) as any, value: d.price }));
-            const medians = data.map(d => ({ time: (d.timestamp / 1000) as any, value: d.median }));
-            const uppers = data.map(d => ({ time: (d.timestamp / 1000) as any, value: d.median + (3 * d.mad) }));
-            const lowers = data.map(d => ({ time: (d.timestamp / 1000) as any, value: d.median - (3 * d.mad) }));
+            const prices = data.map(d => ({ time: Math.floor(d.timestamp / 1000) as any, value: d.price }));
+            const medians = data.map(d => ({ time: Math.floor(d.timestamp / 1000) as any, value: d.median }));
+            const uppers = data.map(d => ({ time: Math.floor(d.timestamp / 1000) as any, value: d.median + (3 * d.mad) }));
+            const lowers = data.map(d => ({ time: Math.floor(d.timestamp / 1000) as any, value: d.median - (3 * d.mad) }));
 
             seriesRef.current.price.setData(prices);
             seriesRef.current.median.setData(medians);
@@ -261,7 +262,7 @@ export const StreamChart = forwardRef<ChartController, StreamChartProps>((props,
             seriesRef.current.lower.setData(lowers);
 
             // Refilter markers because price data range has changed
-            updateMarkers(props.signals || []);
+            updateMarkers(props.trades || []);
 
             if (chartRef.current && data.length > 0) {
                 // Use the actual data range for visible range
@@ -312,6 +313,11 @@ export const StreamChart = forwardRef<ChartController, StreamChartProps>((props,
                 seriesRef.current.median.update({ time: tick.time, value: tick.median });
                 seriesRef.current.upper.update({ time: tick.time, value: tick.upper });
                 seriesRef.current.lower.update({ time: tick.time, value: tick.lower });
+
+                // Refresh markers on every tick to ensure "pending" markers appear as soon as their candle exists
+                if (props.trades && props.trades.length > 0) {
+                    updateMarkers(props.trades);
+                }
             } catch (err) {
                 console.error('❌ Chart Update Error:', err, 'Tick:', tick);
             }

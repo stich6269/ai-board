@@ -152,7 +152,7 @@ export function useMetricsStream({ chartController, onMetricUpdate, onLatencyUpd
                         };
 
                         if (chartController.current) {
-                            const utcTime = msg.data.timestamp / 1000;
+                            const utcTime = Math.floor(msg.data.timestamp / 1000);
 
                             chartController.current.updateCandle({
                                 time: utcTime,
@@ -226,7 +226,7 @@ export function useMetricsStream({ chartController, onMetricUpdate, onLatencyUpd
                             chartController.current.setHistory(downsampled);
 
                             const zScoreHistory = downsampled.map(d => ({
-                                time: d.timestamp / 1000,
+                                time: Math.floor(d.timestamp / 1000),
                                 value: d.zScore
                             }));
                             chartController.current.setZScoreHistory(zScoreHistory);

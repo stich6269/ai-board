@@ -115,6 +115,17 @@ export const getStats = query({
     },
 });
 
+export const getOrders = query({
+    args: { configId: v.id("wick_config"), limit: v.optional(v.number()) },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("wick_orders")
+            .withIndex("by_config_time", (q) => q.eq("configId", args.configId))
+            .order("desc")
+            .take(args.limit || 500);
+    },
+});
+
 // ============================================
 // MUTATIONS - Config Management
 // ============================================
@@ -127,8 +138,11 @@ export const createConfig = mutation({
         takeProfitPercent: v.number(),
         stopLossPercent: v.number(),
         investmentAmount: v.number(),
+        softTimeoutMs: v.optional(v.number()),
         zScoreThreshold: v.optional(v.number()),
         minZScoreExit: v.optional(v.number()),
+        hardTimeoutMs: v.optional(v.number()),
+        safetyWindowMs: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
         const existing = await ctx.db
@@ -152,6 +166,8 @@ export const createConfig = mutation({
             investmentAmount: args.investmentAmount,
             zScoreThreshold: args.zScoreThreshold || 3.0,
             minZScoreExit: args.minZScoreExit || 0.1,
+            hardTimeoutMs: args.hardTimeoutMs || 1200000,
+            safetyWindowMs: args.safetyWindowMs || 60000,
         });
 
         await ctx.db.insert("wick_state", {
@@ -185,6 +201,8 @@ export const updateConfig = mutation({
         // Legacy (deprecated)
         buyDipPercent: v.optional(v.number()),
         takeProfitPercent: v.optional(v.number()),
+        hardTimeoutMs: v.optional(v.number()),
+        safetyWindowMs: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
         const { configId, ...updates } = args;
@@ -410,6 +428,14 @@ export const openRound = mutation({
         symbol: v.string(),
         buyPrice: v.number(),
         buyAmount: v.number(),
+        buyTime: v.optional(v.number()),
+        snapshot: v.optional(v.object({
+            median: v.number(),
+            mad: v.number(),
+            zScore: v.number(),
+            velocity: v.number(),
+            acceleration: v.number(),
+        })),
     },
     handler: async (ctx, args) => {
         const existing = await ctx.db
@@ -437,14 +463,32 @@ export const openRound = mutation({
             }
         }
 
-        return await ctx.db.insert("wick_rounds", {
+        // Use provided timestamp (from exchange) or fallback to Date.now()
+        const buyTime = args.buyTime || Date.now();
+
+        const roundId = await ctx.db.insert("wick_rounds", {
             configId: args.configId,
             symbol: args.symbol,
-            buyTime: Date.now(),
+            buyTime,
             buyPrice: args.buyPrice,
             buyAmount: args.buyAmount,
             status: "OPEN",
         });
+
+        // Also record the first order (Initial BUY)
+        if (args.snapshot) {
+            await ctx.db.insert("wick_orders", {
+                configId: args.configId,
+                roundId,
+                type: "BUY",
+                price: args.buyPrice,
+                amount: args.buyAmount,
+                timestamp: buyTime,
+                snapshot: args.snapshot,
+            });
+        }
+
+        return roundId;
     },
 });
 
@@ -453,6 +497,14 @@ export const averagePosition = mutation({
         roundId: v.id("wick_rounds"),
         newPrice: v.number(),
         newAmount: v.number(),
+        timestamp: v.optional(v.number()),
+        snapshot: v.optional(v.object({
+            median: v.number(),
+            mad: v.number(),
+            zScore: v.number(),
+            velocity: v.number(),
+            acceleration: v.number(),
+        })),
     },
     handler: async (ctx, args) => {
         const round = await ctx.db.get(args.roundId);
@@ -461,15 +513,28 @@ export const averagePosition = mutation({
 
         // Calculate new averaged entry price
         const totalValue = (round.buyPrice * round.buyAmount) + (args.newPrice * args.newAmount);
-        const totalAmount = round.buyAmount + args.newAmount;
-        const averagedPrice = totalValue / totalAmount;
+        const currentTotal = round.buyAmount + args.newAmount;
+        const newAvgPrice = (round.buyPrice * round.buyAmount + args.newPrice * args.newAmount) / currentTotal;
+
+        const timestamp = args.timestamp || Date.now();
 
         await ctx.db.patch(args.roundId, {
-            buyPrice: averagedPrice,
-            buyAmount: totalAmount,
+            buyPrice: newAvgPrice,
+            buyAmount: currentTotal,
         });
 
-        return { averagedPrice, totalAmount };
+        // Record the DCA entry as a separate order
+        if (args.snapshot) {
+            await ctx.db.insert("wick_orders", {
+                configId: round.configId,
+                roundId: args.roundId,
+                type: "DCA",
+                price: args.newPrice,
+                amount: args.newAmount,
+                timestamp,
+                snapshot: args.snapshot,
+            });
+        }
     },
 });
 
@@ -478,12 +543,20 @@ export const closeRound = mutation({
         roundId: v.id("wick_rounds"),
         sellPrice: v.number(),
         status: v.union(v.literal("CLOSED"), v.literal("STOPPED_OUT")),
+        sellTime: v.optional(v.number()),
+        snapshot: v.optional(v.object({
+            median: v.number(),
+            mad: v.number(),
+            zScore: v.number(),
+            velocity: v.number(),
+            acceleration: v.number(),
+        })),
     },
     handler: async (ctx, args) => {
         const round = await ctx.db.get(args.roundId);
         if (!round) throw new Error("Round not found");
 
-        const sellTime = Date.now();
+        const sellTime = args.sellTime || Date.now();
         const durationSeconds = Math.floor((sellTime - round.buyTime) / 1000);
         const finalPnL = (args.sellPrice - round.buyPrice) * round.buyAmount;
 
@@ -495,7 +568,18 @@ export const closeRound = mutation({
             durationSeconds,
         });
 
-        return { finalPnL, durationSeconds };
+        // Record the SELL order
+        if (args.snapshot) {
+            await ctx.db.insert("wick_orders", {
+                configId: round.configId,
+                roundId: args.roundId,
+                type: "SELL",
+                price: args.sellPrice,
+                amount: round.buyAmount,
+                timestamp: sellTime,
+                snapshot: args.snapshot,
+            });
+        }
     },
 });
 
@@ -583,16 +667,14 @@ export const saveSignal = mutation({
 export const getSignals = query({
     args: {
         configId: v.id("wick_config"),
-        since: v.optional(v.number()),
+        limit: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
-        const fiveMinutesAgo = args.since || (Date.now() - 5 * 60 * 1000);
-
         return await ctx.db
             .query("wick_signals")
             .withIndex("by_config_time", (q) => q.eq("configId", args.configId))
-            .filter((q) => q.gte(q.field("timestamp"), fiveMinutesAgo))
-            .collect();
+            .order("desc")
+            .take(args.limit || 300);
     },
 });
 
