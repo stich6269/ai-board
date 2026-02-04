@@ -33,6 +33,13 @@ export const getConfigs = query({
     },
 });
 
+export const getConfigById = query({
+    args: { configId: v.id("wick_config") },
+    handler: async (ctx, args) => {
+        return await ctx.db.get(args.configId);
+    },
+});
+
 export const getState = query({
     args: { configId: v.id("wick_config") },
     handler: async (ctx, args) => {
@@ -211,10 +218,10 @@ export const toggleBot = mutation({
 
         if (state) {
             // If stopping with open position, trigger panic close
-            const newStatus = !newIsRunning && hasOpenPosition 
-                ? "PANIC_CLOSE" 
+            const newStatus = !newIsRunning && hasOpenPosition
+                ? "PANIC_CLOSE"
                 : (newIsRunning ? "IDLE" : "STOPPED");
-            
+
             await ctx.db.patch(state._id, {
                 status: newStatus,
                 updatedAt: Date.now(),
@@ -225,8 +232,39 @@ export const toggleBot = mutation({
     },
 });
 
+export const setActiveSymbol = mutation({
+    args: {
+        userId: v.string(),
+        symbol: v.string()
+    },
+    handler: async (ctx, args) => {
+        const allConfigs = await ctx.db
+            .query("wick_config")
+            .withIndex("by_user", (q) => q.eq("userId", args.userId))
+            .collect();
+
+        let targetConfig = null;
+        for (const config of allConfigs) {
+            const configSymbol = config.symbol.split('/')[0];
+            const isTarget = configSymbol === args.symbol;
+
+            if (isTarget) {
+                targetConfig = config;
+            } else if (config.isRunning) {
+                await ctx.db.patch(config._id, { isRunning: false });
+            }
+        }
+
+        if (targetConfig) {
+            await ctx.db.patch(targetConfig._id, { isRunning: true });
+        }
+
+        return { success: true, configId: targetConfig?._id };
+    },
+});
+
 export const changeSymbol = mutation({
-    args: { 
+    args: {
         configId: v.id("wick_config"),
         symbol: v.string()
     },
@@ -247,7 +285,7 @@ export const changeSymbol = mutation({
             .query("wick_state")
             .withIndex("by_config", (q) => q.eq("configId", args.configId))
             .first();
-        
+
         if (state) {
             await ctx.db.patch(state._id, {
                 status: "IDLE",
@@ -391,7 +429,7 @@ export const openRound = mutation({
             .withIndex("by_config", (q) => q.eq("configId", args.configId))
             .order("desc")
             .take(501);
-        
+
         if (allRounds.length > 500) {
             const oldRounds = allRounds.slice(500);
             for (const round of oldRounds) {
@@ -516,12 +554,12 @@ export const saveSignal = mutation({
     handler: async (ctx, args) => {
         const existing = await ctx.db
             .query("wick_signals")
-            .withIndex("by_config_time", (q) => 
+            .withIndex("by_config_time", (q) =>
                 q.eq("configId", args.configId).eq("timestamp", args.timestamp)
             )
             .filter((q) => q.eq(q.field("type"), args.type))
             .first();
-        
+
         if (!existing) {
             // Cleanup old signals (keep only 500 most recent)
             const allSignals = await ctx.db
@@ -529,27 +567,27 @@ export const saveSignal = mutation({
                 .withIndex("by_config_time", (q) => q.eq("configId", args.configId))
                 .order("desc")
                 .take(501);
-            
+
             if (allSignals.length > 500) {
                 const oldSignals = allSignals.slice(500);
                 for (const signal of oldSignals) {
                     await ctx.db.delete(signal._id);
                 }
             }
-            
+
             await ctx.db.insert("wick_signals", args);
         }
     },
 });
 
 export const getSignals = query({
-    args: { 
+    args: {
         configId: v.id("wick_config"),
         since: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
         const fiveMinutesAgo = args.since || (Date.now() - 5 * 60 * 1000);
-        
+
         return await ctx.db
             .query("wick_signals")
             .withIndex("by_config_time", (q) => q.eq("configId", args.configId))
@@ -587,20 +625,20 @@ export const saveLog = mutation({
             .withIndex("by_config_time", (q) => q.eq("configId", args.configId))
             .order("desc")
             .take(501);
-        
+
         if (allLogs.length > 500) {
             const oldLogs = allLogs.slice(500);
             for (const log of oldLogs) {
                 await ctx.db.delete(log._id);
             }
         }
-        
+
         await ctx.db.insert("wick_logs", args);
     },
 });
 
 export const getLogs = query({
-    args: { 
+    args: {
         configId: v.id("wick_config"),
         limit: v.optional(v.number()),
     },
@@ -610,5 +648,61 @@ export const getLogs = query({
             .withIndex("by_config_time", (q) => q.eq("configId", args.configId))
             .order("desc")
             .take(args.limit || 100);
+    },
+});
+
+export const clearData = mutation({
+    args: {
+        configId: v.id("wick_config"),
+        target: v.union(v.literal("logs"), v.literal("trades"), v.literal("state"), v.literal("all"))
+    },
+    handler: async (ctx, args) => {
+        // 1. Clear Logs & Signals
+        if (args.target === "logs" || args.target === "all") {
+            const logs = await ctx.db
+                .query("wick_logs")
+                .withIndex("by_config_time", (q) => q.eq("configId", args.configId))
+                .collect();
+            for (const log of logs) await ctx.db.delete(log._id);
+
+            const signals = await ctx.db
+                .query("wick_signals")
+                .withIndex("by_config_time", (q) => q.eq("configId", args.configId))
+                .collect();
+            for (const signal of signals) await ctx.db.delete(signal._id);
+        }
+
+        // 2. Clear Rounds (Trades)
+        if (args.target === "trades" || args.target === "all") {
+            const rounds = await ctx.db
+                .query("wick_rounds")
+                .withIndex("by_config", (q) => q.eq("configId", args.configId))
+                .collect();
+            for (const round of rounds) await ctx.db.delete(round._id);
+        }
+
+        // 3. Reset State
+        if (args.target === "state" || args.target === "all") {
+            const state = await ctx.db
+                .query("wick_state")
+                .withIndex("by_config", (q) => q.eq("configId", args.configId))
+                .first();
+
+            if (state) {
+                await ctx.db.patch(state._id, {
+                    status: "IDLE",
+                    marketPrice: 0,
+                    myOrderPrice: undefined,
+                    distancePercent: undefined,
+                    entryPrice: undefined,
+                    targetSellPrice: undefined,
+                    stopLossPrice: undefined,
+                    pnlCurrent: undefined,
+                    buyOrderId: undefined,
+                    sellOrderId: undefined,
+                    updatedAt: Date.now(),
+                });
+            }
+        }
     },
 });

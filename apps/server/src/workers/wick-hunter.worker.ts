@@ -36,13 +36,17 @@ export async function startWickHunter() {
             console.log("⚠️ No Wick Config found");
             return;
         }
-        const config = configs[0]; // Assuming single active config for now
+        // Find the first running config, or just the first one as fallback
+        const config = configs.find(c => c.isRunning) || configs[0];
+        console.log(`📡 Selected config: ${config._id} for ${config.symbol} (isRunning: ${config.isRunning})`);
 
         // 3. InitializeEngine
         if (engine) {
+            console.log('🔄 Stopping previous engine instance...');
             await engine.stop();
         }
 
+        console.log(`🏗️ Creating engine for ${config.symbol}...`);
         engine = new WickHunterEngine({
             configId: config._id,
             symbol: config.symbol,
@@ -63,7 +67,7 @@ export async function startWickHunter() {
         });
 
         await engine.start();
-        console.log('✅ Wick Hunter Engine started');
+        console.log(`✅ Wick Hunter Engine started for ${config.symbol}`);
 
     } catch (err: any) {
         console.error("❌ Failed to start Wick Hunter:", err.message);

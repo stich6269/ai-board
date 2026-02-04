@@ -36,9 +36,9 @@ export class InfrastructureLayer {
     private signer: SigningService;
     private heatmap: LiquidationHeatmap;
     private assetMap: Map<string, number> = new Map();
-    
+
     private stateCheckTimer: NodeJS.Timeout | null = null;
-    
+
     public position: PositionState = {
         state: 'NONE',
         roundId: null,
@@ -124,7 +124,7 @@ export class InfrastructureLayer {
             if (state && state.status === 'MANUAL_CLOSE' && this.position.state === 'LONG') {
                 console.log('🔴 MANUAL_CLOSE detected - closing position');
                 this.onManualClose?.();
-                
+
                 await convexClient.mutation(api.wick.updateState, {
                     configId: this.config.configId as any,
                     status: 'IDLE'
@@ -144,12 +144,13 @@ export class InfrastructureLayer {
     }
 
     public broadcastTick(data: MetricData) {
-        // Broadcast tick immediately at 5Hz - no batching!
         try {
             const heatmapLevels = this.heatmap.getTopLevels(data.time, 20);
-            
+            const coin = this.config.symbol.split('/')[0];
+
             telemetry.broadcast('tick', {
                 configId: this.config.configId,
+                symbol: coin,
                 timestamp: data.time,
                 price: data.price,
                 median: data.median,
@@ -181,13 +182,13 @@ export class InfrastructureLayer {
 
     public async openPosition(price: number, amount: number): Promise<string | null> {
         this.position.isPersisting = true;
-        
+
         const isDCA = this.position.state === 'LONG' && this.position.roundId !== null;
-        
+
         if (!isDCA) {
             // First entry - create new round
             this.position.state = 'LONG';
-            
+
             try {
                 const id = await convexClient.mutation(api.wick.openRound, {
                     configId: this.config.configId as any,
@@ -200,11 +201,16 @@ export class InfrastructureLayer {
                 this.position.dcaCount = 0;
                 this.position.totalAmount = amount;
                 this.position.entryTime = Date.now();
+                this.position.entryTime = Date.now();
                 return id;
-            } catch (e) {
-                console.error('WHE openRound Error:', e);
-                this.position.state = 'NONE';
-                return null;
+            } catch (e: any) {
+                console.error('❌ WHE openRound Error Details:', {
+                    message: e.message,
+                    configId: this.config.configId,
+                    symbol: this.config.symbol,
+                    amount
+                });
+                throw new Error(`openRound failed: ${e.message}`);
             } finally {
                 this.position.isPersisting = false;
             }
@@ -216,18 +222,18 @@ export class InfrastructureLayer {
                     newPrice: price,
                     newAmount: amount
                 });
-                
+
                 // Calculate new average price locally (instant, no DB query needed)
                 const oldAmount = this.position.totalAmount;
                 const newAmount = amount;
                 const avgPrice = ((this.position.entryPrice * oldAmount) + (price * newAmount)) / (oldAmount + newAmount);
-                
+
                 this.position.entryPrice = avgPrice;
                 this.position.totalAmount += newAmount;
                 this.position.dcaCount++;
-                
+
                 console.log(`🔥 DCA Entry #${this.position.dcaCount} executed at ${price}. New Avg Price: ${avgPrice.toFixed(4)}`);
-                
+
                 return this.position.roundId;
             } catch (e) {
                 console.error('WHE averagePosition Error:', e);
@@ -266,8 +272,8 @@ export class InfrastructureLayer {
 
     public async checkIsRunning(): Promise<boolean> {
         try {
-            const config = await convexClient.query(api.wick.getConfig, { 
-                userId: "default" 
+            const config = await convexClient.query(api.wick.getConfigById, {
+                configId: this.config.configId as any
             });
             return config?.isRunning ?? false;
         } catch (e) {

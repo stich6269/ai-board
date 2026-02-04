@@ -6,13 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Target } from "lucide-react";
+import { useAppStore } from "@/store";
 
 interface CreateConfigProps {
     onCreated: () => void;
 }
 
 export function CreateConfig({ onCreated }: CreateConfigProps) {
-    const [symbol, setSymbol] = useState("HYPE/USDC:USDC");
+    const userId = useAppStore(state => state.userId);
+    const currentSymbol = useAppStore(state => state.currentSymbol);
+    const [symbol, setSymbol] = useState(currentSymbol);
     const [buyDip, setBuyDip] = useState(1.5);
     const [takeProfit, setTakeProfit] = useState(1.0);
     const [stopLoss, setStopLoss] = useState(3.0);
@@ -25,17 +28,17 @@ export function CreateConfig({ onCreated }: CreateConfigProps) {
         setLoading(true);
         try {
             await createConfig({
-                userId: "default",
+                userId,
                 symbol,
                 buyDipPercent: buyDip,
                 takeProfitPercent: takeProfit,
                 stopLossPercent: stopLoss,
                 investmentAmount: investment,
             });
-            
+
             // 🚀 Автоматически запускаем Wick Hunter worker
             await fetch('/api/workers/wick-hunter/start', { method: 'POST' });
-            
+
             onCreated();
         } catch (err) {
             console.error("Failed to create config:", err);
@@ -117,8 +120,8 @@ export function CreateConfig({ onCreated }: CreateConfigProps) {
                     </div>
                 </div>
 
-                <Button 
-                    onClick={handleCreate} 
+                <Button
+                    onClick={handleCreate}
                     disabled={loading || !symbol}
                     className="w-full"
                 >

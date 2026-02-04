@@ -38,16 +38,16 @@ const levelConfig = {
 const LogRow = memo(({ log }: { log: LogEntry }) => {
     const config = levelConfig[log.level];
     const Icon = config.icon;
-    
+
     // Format time once per row instead of on every render
     const timeStr = new Date(log.timestamp).toLocaleTimeString();
-    
+
     // Pre-calculate colors
     const zScoreColor = log.snapshot.zScore < -2 ? 'text-green-400' : log.snapshot.zScore > 2 ? 'text-red-400' : 'text-gray-300';
     const velocityColor = log.snapshot.velocity < 0 ? 'text-red-400' : 'text-green-400';
     const accelColor = log.snapshot.acceleration < 0 ? 'text-red-400' : 'text-green-400';
-    const pnlColor = log.snapshot.pnlPercent !== undefined 
-        ? (log.snapshot.pnlPercent > 0 ? 'text-green-400' : 'text-red-400') 
+    const pnlColor = log.snapshot.pnlPercent !== undefined
+        ? (log.snapshot.pnlPercent > 0 ? 'text-green-400' : 'text-red-400')
         : 'text-gray-500';
     const pnlText = log.snapshot.pnlPercent !== undefined ? `${log.snapshot.pnlPercent.toFixed(2)}%` : '---';
 
@@ -89,9 +89,9 @@ LogRow.displayName = 'LogRow';
 export const WickLogsTable = memo(({ logs }: WickLogsTableProps) => {
     if (!logs || logs.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 text-gray-500 bg-[#0f0f0f] rounded-lg border border-gray-800 border-dashed">
-                <Info className="w-8 h-8 mb-2 opacity-20" />
-                <p>No logs recorded yet</p>
+            <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+                <Info className="w-5 h-5 mb-1 opacity-20" />
+                <p className="text-sm">No logs recorded yet</p>
             </div>
         );
     }
@@ -134,7 +134,7 @@ export const copyLogsToClipboard = async (logs: LogEntry[]) => {
             snapshot: log.snapshot
         }))
     };
-    
+
     try {
         await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
         return true;

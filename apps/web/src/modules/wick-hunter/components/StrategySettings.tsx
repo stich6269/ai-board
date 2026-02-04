@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '../../../../../../convex/_generated/api';
 import type { Id } from '../../../../../../convex/_generated/dataModel';
@@ -32,6 +32,22 @@ export function StrategySettings({ config }: StrategySettingsProps) {
     });
     const [isDirty, setIsDirty] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        setLocalConfig({
+            investmentAmount: config.investmentAmount || 10,
+            zScoreThreshold: config.zScoreThreshold || 2.0,
+            windowSize: config.windowSize || 200,
+            minMadThreshold: config.minMadThreshold || 0.001,
+            maxDcaEntries: config.maxDcaEntries ?? 2,
+            dcaZScoreMultiplier: config.dcaZScoreMultiplier || 1.3,
+            minDcaPriceDeviationPercent: config.minDcaPriceDeviationPercent || 0.2,
+            stopLossPercent: config.stopLossPercent || 3.0,
+            softTimeoutMs: config.softTimeoutMs || 30000,
+            minZScoreExit: config.minZScoreExit || 0.1,
+        });
+        setIsDirty(false);
+    }, [config._id, config.symbol]);
 
     const handleChange = (field: string, value: number | number[]) => {
         const numValue = Array.isArray(value) ? value[0] : value;

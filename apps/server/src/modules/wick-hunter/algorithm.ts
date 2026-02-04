@@ -2,7 +2,7 @@ import { RollingMAD } from '@funding-harvester/shared/src/math/rolling-mad';
 
 const MAX_USD_PER_TRADE = 20;
 const MIN_TICK_DELTA_MS = 1;
-const PANIC_MULTIPLIER = 3.0; 
+const PANIC_MULTIPLIER = 3.0;
 
 export interface AlgorithmConfig {
     windowSize: number;
@@ -13,7 +13,7 @@ export interface AlgorithmConfig {
     maxDcaEntries: number;
     dcaZScoreMultiplier: number;
     // [NEW] Минимальное падение цены (в %) для срабатывания DCA
-    minDcaPriceDeviationPercent: number; 
+    minDcaPriceDeviationPercent: number;
     // [NEW] Минимальная волатильность (MAD), чтобы не торговать шум
     minMadThreshold: number;
     // [NEW] Время, после которого снижаем требования к выходу (мягкий таймаут)
@@ -162,7 +162,7 @@ export class AlgorithmLayer {
         // ПРИОРИТЕТ 1: ЛОГИКА ВЫХОДА (SELL)
         // (Она должна работать всегда, независимо от волатильности!)
         // =========================================================
-        
+
         // 1.1 Stop Loss / Take Profit
         if (state.positionState === 'LONG' && state.entryPrice > 0) {
             const pnlPercent = (price - state.entryPrice) / state.entryPrice;
@@ -182,14 +182,14 @@ export class AlgorithmLayer {
         if (state.positionState === 'LONG') {
             // Базовая цель: вернуться к медиане с учетом комиссии
             let targetZScore = this.config.minZScoreExit;
-            
+
             // Если держим позицию долго, снижаем планку ожиданий
             const holdTime = state.entryTime ? (now - state.entryTime) : 0;
-            
+
             if (holdTime > this.config.softTimeoutMs) {
                 // Через 30 сек: согласны выйти при Z >= -1.0
                 targetZScore = -1.0;
-                
+
                 // Через 60 сек: согласны выйти при Z >= -1.5
                 if (holdTime > this.config.softTimeoutMs * 2) {
                     targetZScore = -1.5;
@@ -198,7 +198,7 @@ export class AlgorithmLayer {
 
             // Проверка выхода
             if (stats.zScore >= targetZScore) {
-                
+
                 // ЗАЩИТА ОТ ЯМЫ: не продаем, если цена активно падает
                 const isPanicExit = targetZScore < 0; // Мы снизили требования
                 const isPriceCrashing = this.velocity < 0; // Цена летит вниз
@@ -213,7 +213,7 @@ export class AlgorithmLayer {
                 }
 
                 const exitType = targetZScore < 0 ? 'TIME_DECAY' : 'PROFIT';
-                this.log('SIGNAL', `🔴 ${exitType} Exit! Z: ${stats.zScore.toFixed(2)} (Target: ${targetZScore.toFixed(1)}, Hold: ${(holdTime/1000).toFixed(0)}s)`, state);
+                this.log('SIGNAL', `🔴 ${exitType} Exit! Z: ${stats.zScore.toFixed(2)} (Target: ${targetZScore.toFixed(1)}, Hold: ${(holdTime / 1000).toFixed(0)}s)`, state);
                 this.lastSignalTime = now;
                 return { signal: 'SELL', sellReason: 'CLOSED' };
             }
@@ -242,13 +242,13 @@ export class AlgorithmLayer {
 
             // Условие: Z-Score ниже порога DCA И Лимит не исчерпан
             if (stats.zScore < (dcaThreshold * -1) && state.dcaCount < this.config.maxDcaEntries) {
-                
+
                 // [FIX] Строгая проверка просадки
                 // Если drawdown (-0.0001) > required (-0.005), значит просадка МЕНЬШЕ требуемой
                 // (Помним про отрицательные числа: -0.0001 > -0.005)
                 if (currentDrawdownPercent > requiredDrawdown) {
                     // Debug: показываем почему DCA не сработал
-                    this.log('INFO', `DCA Blocked: Drawdown ${(currentDrawdownPercent*100).toFixed(3)}% < Required ${(requiredDrawdown*100).toFixed(3)}%`, state);
+                    this.log('INFO', `DCA Blocked: Drawdown ${(currentDrawdownPercent * 100).toFixed(3)}% < Required ${(requiredDrawdown * 100).toFixed(3)}%`, state);
                     return { signal: undefined };
                 }
 
@@ -256,7 +256,7 @@ export class AlgorithmLayer {
                     return { signal: undefined };
                 }
 
-                this.log('SIGNAL', `🔥 DCA ENTRY! Z: ${stats.zScore.toFixed(2)}, Drawdown: ${(currentDrawdownPercent*100).toFixed(3)}% (Required: ${(requiredDrawdown*100).toFixed(3)}%)`, state);
+                this.log('SIGNAL', `🔥 DCA ENTRY! Z: ${stats.zScore.toFixed(2)}, Drawdown: ${(currentDrawdownPercent * 100).toFixed(3)}% (Required: ${(requiredDrawdown * 100).toFixed(3)}%)`, state);
                 this.lastSignalTime = now;
                 return { signal: 'BUY' };
             }
@@ -264,7 +264,7 @@ export class AlgorithmLayer {
 
         // 3.2 Первый вход (First Entry)
         if (state.positionState === 'NONE' && stats.zScore < -this.config.zScoreThreshold) {
-            
+
             if (now - this.lastSignalTime < this.minSignalInterval) return { signal: undefined };
 
             const isExtremePanic = stats.zScore < (this.config.zScoreThreshold * PANIC_MULTIPLIER * -1);
@@ -272,7 +272,7 @@ export class AlgorithmLayer {
             // Фильтр "Падающего ножа" (отключается при панике)
             if (!isExtremePanic && this.priceHistory.length >= 3) {
                 if (this.velocity < 0 && this.acceleration < 0) {
-                    return { signal: undefined }; 
+                    return { signal: undefined };
                 }
             }
 

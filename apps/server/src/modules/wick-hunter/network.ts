@@ -46,9 +46,14 @@ export class NetworkLayer {
     private connect() {
         if (!this.isRunning) return;
 
-        this.ws = new WebSocket(this.config.wsUrl);
+        this.ws = new WebSocket(this.config.wsUrl, {
+            perMessageDeflate: false,
+            skipUTF8Validation: true,
+            handshakeTimeout: 5000
+        });
 
         this.ws.on('open', () => {
+            console.log(`🌐 WHE WebSocket CONNECTED to ${this.config.wsUrl}`);
             this.pingInterval = setInterval(() => {
                 if (this.ws && (this.ws as any).readyState === 1) {
                     this.ws.send(JSON.stringify({ method: "ping" }));
@@ -84,18 +89,27 @@ export class NetworkLayer {
             method: "subscribe",
             subscription: { type: "trades", coin: coin }
         };
+        console.log(`📡 WHE Subscribing to trades for: ${coin}`);
         this.ws.send(JSON.stringify(msg));
     }
 
     private handleMessage(data: Buffer) {
         try {
             const msg = JSON.parse(data.toString());
+
+            if (msg.channel === 'subscriptionResponse') {
+                console.log(`✅ WHE Subscription confirmed:`, JSON.stringify(msg));
+            }
+
             if (msg.channel === 'trades') {
                 const trades: TradeData[] = msg.data.map((trade: any) => ({
                     price: parseFloat(trade.px),
                     size: parseFloat(trade.sz),
                     time: trade.time
                 }));
+                if (trades.length > 0) {
+                    console.log(`📥 WHE Received ${trades.length} trades, price: ${trades[0].price}`);
+                }
                 this.onTrades(trades);
             }
         } catch (e) {

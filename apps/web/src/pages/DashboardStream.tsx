@@ -1,22 +1,54 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Target } from "lucide-react";
 
 import { StreamChart } from "@/modules/wick-hunter/components/StreamChart";
-import { CreateConfig } from "@/modules/wick-hunter/components/CreateConfig";
 import { BottomPanel } from "@/modules/wick-hunter/components/BottomPanel";
 import { StrategySettings } from "@/modules/wick-hunter/components/StrategySettings";
 import { DashboardHeader } from "@/modules/wick-hunter/components/DashboardHeader";
 import { StatsBar } from "@/modules/wick-hunter/components/StatsBar";
 import { useMetricsStream } from "@/modules/wick-hunter/model/hooks/useMetricsStream";
 import type { ChartController, MetricData } from "@/modules/wick-hunter/model/hooks/useMetricsStream";
+import { useAppStore, AppActions } from "@/store";
+import { AIAdvisorPanel } from "@/modules/ai-advisor";
+
+const DEFAULT_CONFIG = {
+    buyDipPercent: 1.5,
+    takeProfitPercent: 1.0,
+    stopLossPercent: 3.0,
+    investmentAmount: 15,
+    zScoreThreshold: 3.0,
+    minZScoreExit: 0.1,
+};
 
 export default function DashboardStream() {
-    const config = useQuery(api.wick.getConfig, { userId: "default" });
+    const { userId, currentSymbol } = useAppStore();
+    const config = useQuery(api.wick.getConfig, { userId, symbol: currentSymbol });
     const toggleBot = useMutation(api.wick.toggleBot);
-    const changeSymbol = useMutation(api.wick.changeSymbol);
+    const createConfig = useMutation(api.wick.createConfig);
+    const setActiveSymbol = useMutation(api.wick.setActiveSymbol);
+    const [isCreatingConfig, setIsCreatingConfig] = useState(false);
+
+    useEffect(() => {
+        if (config) {
+            AppActions.setConfig(config._id, config.isRunning);
+        } else if (config === null && !isCreatingConfig) {
+            setIsCreatingConfig(true);
+            createConfig({
+                userId,
+                symbol: currentSymbol,
+                ...DEFAULT_CONFIG,
+            }).then(() => {
+                setIsCreatingConfig(false);
+                fetch('/api/workers/wick-hunter/start', { method: 'POST' });
+            }).catch((err) => {
+                console.error('Failed to create config:', err);
+                setIsCreatingConfig(false);
+            });
+        }
+    }, [config, currentSymbol, userId, isCreatingConfig, createConfig]);
+
     const statsData = useQuery(api.wick.getStats, config ? { configId: config._id } : "skip");
     const signals = useQuery(api.wick.getSignals, config ? { configId: config._id } : "skip");
     const logs = useQuery(api.wick.getLogs, config ? { configId: config._id, limit: 100 } : "skip");
@@ -49,24 +81,26 @@ export default function DashboardStream() {
     }, []);
 
     const handleSymbolChange = useCallback(async (newSymbol: string) => {
-        if (!config) return;
-        await changeSymbol({ configId: config._id, symbol: newSymbol });
-        // Clear local state
+        AppActions.setSymbol(newSymbol);
         setCurrentMetric(undefined);
         setLatency(0);
-    }, [config, changeSymbol]);
+        if (chartControllerRef.current) {
+            chartControllerRef.current.setHistory([]);
+            chartControllerRef.current.setZScoreHistory([]);
+        }
+        await setActiveSymbol({ userId, symbol: newSymbol });
+    }, [userId, setActiveSymbol]);
 
-    // 🔥 Подключаем стрим с коллбеками
-    useMetricsStream({ 
+    useMetricsStream({
         chartController: chartControllerRef,
         onMetricUpdate: handleMetricUpdate,
         onLatencyUpdate: handleLatencyUpdate
     });
 
-    const [refreshKey, setRefreshKey] = useState(0);
+    // Initial Loading - only for the very first load
+    const isFirstLoad = config === undefined && !currentSymbol;
 
-    // Initial Loading
-    if (config === undefined) {
+    if (isFirstLoad) {
         return (
             <div className="p-8 space-y-6 max-w-[1400px] mx-auto">
                 <Skeleton className="h-24 w-full" />
@@ -75,73 +109,78 @@ export default function DashboardStream() {
         );
     }
 
-    // Onboarding
-    if (config === null) {
-        return (
-            <div className="p-8 max-w-6xl mx-auto">
-                <div className="text-center mb-8">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                        <Target className="h-8 w-8 text-blue-600" />
-                        <h1 className="text-3xl font-bold">Mission Control (Stream)</h1>
-                    </div>
-                    <p className="text-muted-foreground">
-                        Initialize modules to access the dashboard.
-                    </p>
-                </div>
-                <CreateConfig
-                    key={refreshKey}
-                    onCreated={() => setRefreshKey(k => k + 1)}
-                />
-            </div>
-        );
-    }
+    // While switching symbols, we show the previous UI but with loading indicators for data
+    const isSwitching = config === undefined || isCreatingConfig;
+    const effectiveConfig = config || {
+        _id: "placeholder",
+        isRunning: false,
+        windowSize: 200,
+        zScoreThreshold: 3.0,
+        stopLossPercent: 3.0,
+        takeProfitPercent: 1.0,
+    };
 
     return (
         <div className="h-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden">
             <DashboardHeader
-                symbol={config.symbol}
-                isRunning={config.isRunning}
-                onToggle={() => toggleBot({ configId: config._id })}
+                symbol={currentSymbol}
+                isRunning={effectiveConfig.isRunning}
+                onToggle={() => config && toggleBot({ configId: config._id })}
                 onSymbolChange={handleSymbolChange}
             />
-            
-            <StatsBar
-                totalPnL={totalPnL}
-                winRate={stats.winRate}
-                totalRounds={stats.totalRounds}
-                lastPrice={currentMetric?.price}
-                latency={latency}
-                currentMetric={currentMetric}
-                zScoreThreshold={config.zScoreThreshold || 3.0}
-            />
 
-            <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 flex overflow-hidden">
-                    <div className="flex-1 overflow-hidden bg-[#0a0a0a] p-2">
-                        {/* 🔥 НОВЫЙ ГРАФИК С СИГНАЛАМИ И ЛИНИЯМИ */}
-                        <StreamChart 
-                            ref={chartControllerRef}
-                            signals={signals || []}
-                            stopLossPrice={slPrice}
-                            takeProfitPrice={tpPrice}
-                            windowSize={config.windowSize}
-                        />
+            <div className={`flex-1 flex overflow-hidden ${isSwitching ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    <StatsBar
+                        totalPnL={totalPnL}
+                        winRate={stats.winRate}
+                        totalRounds={stats.totalRounds}
+                        lastPrice={currentMetric?.price}
+                        latency={latency}
+                        currentMetric={currentMetric}
+                        zScoreThreshold={effectiveConfig.zScoreThreshold || 3.0}
+                    />
+
+                    <div className="flex-1 flex overflow-hidden">
+                        <div className="flex-1 overflow-hidden bg-[#0a0a0a] p-2">
+                            <StreamChart
+                                ref={chartControllerRef}
+                                signals={isSwitching ? [] : (signals || [])}
+                                stopLossPrice={slPrice}
+                                takeProfitPrice={tpPrice}
+                                windowSize={effectiveConfig.windowSize}
+                            />
+                        </div>
+
+                        <div className="w-[280px] flex-shrink-0 border-l border-gray-800">
+                            {config ? (
+                                <StrategySettings config={config} />
+                            ) : (
+                                <div className="p-4"><Skeleton className="h-full w-full" /></div>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="w-[280px] flex-shrink-0">
-                        <StrategySettings config={config} />
+                    <div className="h-[280px] flex-shrink-0 border-t border-gray-800">
+                        <BottomPanel
+                            trades={isSwitching ? [] : (limitedTrades as any[])}
+                            openPosition={isSwitching ? undefined : openRound}
+                            slPrice={slPrice}
+                            tpPrice={tpPrice}
+                            currentPrice={currentMetric?.price}
+                            configId={config?._id}
+                            logs={isSwitching ? [] : (logs || [])}
+                        />
                     </div>
                 </div>
 
-                <div className="h-[280px] flex-shrink-0">
-                    <BottomPanel
-                        trades={limitedTrades as any[]}
-                        openPosition={openRound}
-                        slPrice={slPrice}
-                        tpPrice={tpPrice}
-                        currentPrice={currentMetric?.price}
-                        configId={config._id}
-                        logs={logs || []}
+                <div className="w-[350px] flex-shrink-0">
+                    <AIAdvisorPanel
+                        configId={config?._id}
+                        config={config}
+                        trades={isSwitching ? [] : limitedTrades}
+                        signals={isSwitching ? [] : (signals || [])}
+                        symbol={currentSymbol}
                     />
                 </div>
             </div>

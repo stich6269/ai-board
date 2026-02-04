@@ -79,11 +79,11 @@ export class WickHunterEngine {
     public async start() {
         await this.infra.start();
         this.network.start();
-        
-        // Start 5Hz tick timer
+
+        // Start 1Hz heartbeat timer (slower, just for UI continuity)
         this.tickInterval = setInterval(() => {
-            this.generateFixedTick();
-        }, 200); // 200ms = 5Hz
+            this.generateHeartbeat();
+        }, 1000);
     }
 
     public async stop() {
@@ -97,7 +97,7 @@ export class WickHunterEngine {
 
     private processTrades(trades: TradeData[]) {
         const batchStart = performance.now();
-        
+
         for (const trade of trades) {
             const tradeStart = performance.now();
             const { price, size, time } = trade;
@@ -137,68 +137,131 @@ export class WickHunterEngine {
             const wsLatency = Date.now() - time;
             this.lastWsLatency = wsLatency;
 
-            // 5. Update current state only (no broadcast - handled by timer)
+            // 5. Update current state (but postpone broadcast)
             this.currentPrice = price;
 
-            // Log latencies every second
-            const now = Date.now();
-            if (now - this.lastLatencyLog > 1000) {
-                this.lastLatencyLog = now;
-                console.log(`⏱️ LATENCY [#${this.tradeCount}] WS: ${wsLatency}ms | Heatmap: ${heatmapTime.toFixed(2)}ms | Algo: ${algoTime.toFixed(2)}ms | Signal: ${signalTime.toFixed(2)}ms | Total: ${tradeTotal.toFixed(2)}ms`);
-                console.log(`⏱️ LATENCY [#${this.tradeCount}] WS: ${wsLatency}ms | Heatmap: ${heatmapTime.toFixed(2)}ms | Algo: ${algoTime.toFixed(2)}ms | Signal: ${signalTime.toFixed(2)}ms | Total: ${tradeTotal.toFixed(2)}ms`);
+            // Log latencies every 1000 trades or as needed
+            if (this.tradeCount % 100 === 0) {
+                console.log(`⏱️ LATENCY [#${this.tradeCount}] WS: ${wsLatency}ms | Total: ${tradeTotal.toFixed(2)}ms`);
+            }
+        }
+
+        // Broadcast only the FINAL state of the batch to the UI
+        if (trades.length > 0) {
+            const lastTrade = trades[trades.length - 1];
+            // Use current stats (from the last processed trade)
+            const stats = this.algorithm.getCurrentStats();
+            if (stats) {
+                this.broadcastLiveTick(lastTrade.price, stats, lastTrade.time);
             }
         }
 
         const batchTotal = performance.now() - batchStart;
-        if (trades.length > 1) {
-            console.log(`📦 BATCH [${trades.length} trades] Total: ${batchTotal.toFixed(2)}ms | Avg: ${(batchTotal / trades.length).toFixed(2)}ms/trade`);
+        if (trades.length > 5) {
+            console.log(`📦 BATCH [${trades.length} trades] Total: ${batchTotal.toFixed(2)}ms`);
         }
     }
 
+    private broadcastLiveTick(price: number, stats: Stats, time: number) {
+        this.lastTickTime = Date.now();
+        this.infra.broadcastTick({
+            price,
+            median: stats.median,
+            mad: stats.mad,
+            zScore: stats.zScore,
+            time,
+            signal: undefined,
+            wsLatency: this.lastWsLatency
+        });
+    }
+
     private async executeBuy(price: number, stats: Stats, time: number) {
-        // Check if trading is enabled before opening position
+        console.log(`🔍 Attempting BUY at ${price.toFixed(2)} (Z: ${stats.zScore.toFixed(2)})`);
+
+        // Debug: Log attempt to DB so it shows in UI
+        this.infra.saveLog({
+            timestamp: Date.now(),
+            level: 'INFO',
+            message: `🔍 Attempting BUY at ${price.toFixed(2)} (Z: ${stats.zScore.toFixed(2)})`,
+            snapshot: { price, median: stats.median, mad: stats.mad, zScore: stats.zScore, velocity: 0, acceleration: 0, positionState: this.infra.position.state }
+        }).catch(console.error);
+
         const isRunning = await this.infra.checkIsRunning();
+        console.log(`🔍 Engine Running State: ${isRunning}`);
+
         if (!isRunning) {
-            console.log('⏸️ Trading paused - skipping BUY signal');
+            console.warn(`⚠️ Buy skipped: Engine not running (Infra check failed)`);
+            this.infra.saveLog({
+                timestamp: Date.now(),
+                level: 'WARN',
+                message: `⚠️ Buy skipped: Engine not running (Infra check failed)`,
+                snapshot: { price, median: stats.median, mad: stats.mad, zScore: stats.zScore, velocity: 0, acceleration: 0, positionState: this.infra.position.state }
+            }).catch(console.error);
             return;
         }
-        
+
         const amount = this.algorithm.calculateBuyAmount(price);
-        
+        console.log(`🔍 Calculated Buy Amount: ${amount}`);
+
+        if (amount <= 0) {
+            console.warn(`⚠️ Buy skipped: Invalid amount (${amount})`);
+            this.infra.saveLog({
+                timestamp: Date.now(),
+                level: 'WARN',
+                message: `⚠️ Buy skipped: Invalid amount (${amount})`,
+                snapshot: { price, median: stats.median, mad: stats.mad, zScore: stats.zScore, velocity: 0, acceleration: 0, positionState: this.infra.position.state }
+            }).catch(console.error);
+            return;
+        }
+
         this.infra.openPosition(price, amount)
-            .then(() => {
-                this.infra.saveSignal('BUY', price, stats.zScore, time).catch(console.error);
+            .then((id) => {
+                if (id) {
+                    console.log(`✅ Virtual Position Opened/Updated! RoundID: ${id}`);
+                    this.infra.saveLog({
+                        timestamp: Date.now(),
+                        level: 'INFO',
+                        message: `✅ Virtual Position Opened/Updated! RoundID: ${id}`,
+                        snapshot: { price, median: stats.median, mad: stats.mad, zScore: stats.zScore, velocity: 0, acceleration: 0, positionState: this.infra.position.state }
+                    }).catch(console.error);
+                    this.infra.saveSignal('BUY', price, stats.zScore, time).catch(console.error);
+                } else {
+                    console.error(`❌ Virtual Position Failed: ID is null`);
+                    this.infra.saveLog({
+                        timestamp: Date.now(),
+                        level: 'ERROR',
+                        message: `❌ Virtual Position Failed: ID is null`,
+                        snapshot: { price, median: stats.median, mad: stats.mad, zScore: stats.zScore, velocity: 0, acceleration: 0, positionState: this.infra.position.state }
+                    }).catch(console.error);
+                }
             })
-            .catch(console.error);
+            .catch(err => {
+                console.error(`❌ Virtual Position Except: ${err.message}`);
+                this.infra.saveLog({
+                    timestamp: Date.now(),
+                    level: 'ERROR',
+                    message: `❌ Virtual Position Except: ${err.message}`,
+                    snapshot: { price, median: stats.median, mad: stats.mad, zScore: stats.zScore, velocity: 0, acceleration: 0, positionState: this.infra.position.state }
+                }).catch(console.error);
+            });
     }
 
     private executeSell(price: number, status: 'CLOSED' | 'STOPPED_OUT') {
         this.infra.closePosition(price, status).catch(console.error);
     }
 
-    private generateFixedTick() {
+    private generateHeartbeat() {
         const now = Date.now();
-        
-        // Duplicate protection (avoid sending same tick twice)
-        if (this.lastTickTime && now - this.lastTickTime < 180) {
-            return;
-        }
-        
-        this.lastTickTime = now;
-        
-        // Get current stats from algorithm
-        const stats = this.algorithm.getCurrentStats();
-        if (!stats) {
+
+        // If we recently sent a live tick, skip heartbeat to reduce noise
+        if (this.lastTickTime && now - this.lastTickTime < 900) {
             return;
         }
 
-        // Get latest price from algorithm (updates with every trade)
+        const stats = this.algorithm.getCurrentStats();
         const price = this.algorithm.getLastPrice();
-        if (price === 0) {
-            return;
-        }
-        
-        // Broadcast fixed-frequency tick
+        if (!stats || price === 0) return;
+
         this.infra.broadcastTick({
             price: price,
             median: stats.median,
@@ -208,10 +271,8 @@ export class WickHunterEngine {
             signal: undefined,
             wsLatency: this.lastWsLatency
         });
-        
-        // Debug: Log every 10th broadcast
-        if (Math.random() < 0.1) {
-            console.log(`📡 Broadcasting tick: price=${price.toFixed(2)}, zScore=${stats.zScore.toFixed(2)}`);
-        }
+
+        // Heartbeat log with full precision
+        console.log(`📡 Heartbeat: price=${price.toFixed(5)}, zScore=${stats.zScore.toFixed(3)}`);
     }
 }

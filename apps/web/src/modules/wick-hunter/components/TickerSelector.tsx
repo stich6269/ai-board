@@ -19,6 +19,7 @@ import {
 interface TickerInfo {
     symbol: string;
     volatility: number;
+    volume24h: number;
 }
 
 interface TickerSelectorProps {
@@ -52,26 +53,35 @@ export function TickerSelector({ currentSymbol, onSymbolChange }: TickerSelector
                     const ctx = assetCtxs[index];
                     const markPx = parseFloat(ctx?.markPx || '0');
                     const prevDayPx = parseFloat(ctx?.prevDayPx || '0');
+                    const volume24h = parseFloat(ctx?.dayNtlVlm || '0');
                     const volatility = prevDayPx > 0 
                         ? ((markPx - prevDayPx) / prevDayPx) * 100 
                         : 0;
                     
                     return {
                         symbol: asset.name,
-                        volatility: volatility
+                        volatility: volatility,
+                        volume24h: volume24h
                     };
                 })
                 .sort((a: TickerInfo, b: TickerInfo) => 
-                    Math.abs(b.volatility) - Math.abs(a.volatility)
+                    b.volume24h - a.volume24h
                 );
             
             setTickers(tickerList);
         } catch (error) {
             console.error('Failed to fetch tickers:', error);
-            setTickers([{ symbol: currentSymbol, volatility: 0 }]);
+            setTickers([{ symbol: currentSymbol, volatility: 0, volume24h: 0 }]);
         } finally {
             setLoading(false);
         }
+    };
+
+    const formatVolume = (volume: number) => {
+        if (volume >= 1_000_000_000) return `$${(volume / 1_000_000_000).toFixed(1)}B`;
+        if (volume >= 1_000_000) return `$${(volume / 1_000_000).toFixed(1)}M`;
+        if (volume >= 1_000) return `$${(volume / 1_000).toFixed(1)}K`;
+        return `$${volume.toFixed(0)}`;
     };
 
     const getVolatilityColor = (vol: number) => {
@@ -125,17 +135,22 @@ export function TickerSelector({ currentSymbol, onSymbolChange }: TickerSelector
                                     />
                                     <div className="flex-1 flex items-center justify-between">
                                         <span className="font-medium">{ticker.symbol}/USDC</span>
-                                        <div className="flex items-center gap-1">
-                                            <TrendingUp className={cn(
-                                                "h-3 w-3",
-                                                ticker.volatility >= 0 ? "text-green-500" : "text-red-500 rotate-180"
-                                            )} />
-                                            <span className={cn(
-                                                "text-xs font-mono",
-                                                getVolatilityColor(ticker.volatility)
-                                            )}>
-                                                {ticker.volatility > 0 ? '+' : ''}{ticker.volatility.toFixed(2)}%
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs font-mono text-gray-500">
+                                                {formatVolume(ticker.volume24h)}
                                             </span>
+                                            <div className="flex items-center gap-1">
+                                                <TrendingUp className={cn(
+                                                    "h-3 w-3",
+                                                    ticker.volatility >= 0 ? "text-green-500" : "text-red-500 rotate-180"
+                                                )} />
+                                                <span className={cn(
+                                                    "text-xs font-mono",
+                                                    getVolatilityColor(ticker.volatility)
+                                                )}>
+                                                    {ticker.volatility > 0 ? '+' : ''}{ticker.volatility.toFixed(2)}%
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </CommandItem>

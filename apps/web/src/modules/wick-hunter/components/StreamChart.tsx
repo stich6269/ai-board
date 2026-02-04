@@ -26,12 +26,12 @@ interface StreamChartProps {
 
 // Оборачиваем в forwardRef, чтобы родитель мог получить доступ к методам
 export const StreamChart = forwardRef<ChartController, StreamChartProps>((props, ref) => {
-    const { stopLossPrice, takeProfitPrice, windowSize } = props;
+    const { stopLossPrice, takeProfitPrice } = props;
     const containerRef = useRef<HTMLDivElement>(null);
     const zScoreContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const zScoreChartRef = useRef<IChartApi | null>(null);
-    
+
     // Ссылки на серии данных (чтобы обновлять их без рендера)
     const seriesRef = useRef<{
         price: ISeriesApi<'Line'>;
@@ -55,9 +55,19 @@ export const StreamChart = forwardRef<ChartController, StreamChartProps>((props,
             height: 350,
             layout: { background: { type: ColorType.Solid, color: '#0a0a0a' }, textColor: '#ccc' },
             grid: { vertLines: { color: '#333' }, horzLines: { color: '#333' } },
-            timeScale: { 
+            timeScale: {
                 visible: false,
                 rightOffset: 12
+            },
+            localization: {
+                timeFormatter: (time: any) => {
+                    return new Date(time * 1000).toLocaleString();
+                }
+            },
+            rightPriceScale: {
+                minimumWidth: 120,
+                borderVisible: true,
+                borderColor: '#333',
             },
         });
 
@@ -66,35 +76,50 @@ export const StreamChart = forwardRef<ChartController, StreamChartProps>((props,
             height: 150,
             layout: { background: { type: ColorType.Solid, color: '#0a0a0a' }, textColor: '#ccc' },
             grid: { vertLines: { color: '#333' }, horzLines: { color: '#666' } },
-            timeScale: { 
+            timeScale: {
                 timeVisible: true,
                 secondsVisible: true,
-                rightOffset: 12
+                rightOffset: 12,
+                // Format ticks to local time
+                tickMarkFormatter: (time: any) => {
+                    return new Date(time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                }
+            },
+            localization: {
+                // Tooltip time format
+                timeFormatter: (time: any) => {
+                    return new Date(time * 1000).toLocaleString();
+                }
+            },
+            rightPriceScale: {
+                minimumWidth: 120,
+                borderVisible: true,
+                borderColor: '#333',
             },
         });
 
-        const priceSeries = chart.addSeries(LineSeries, { 
-            color: 'white', 
+        const priceSeries = chart.addSeries(LineSeries, {
+            color: 'white',
             lineWidth: 2,
             lastValueVisible: false,
             priceLineVisible: false
         });
-        const medianSeries = chart.addSeries(LineSeries, { 
-            color: '#3b82f6', 
+        const medianSeries = chart.addSeries(LineSeries, {
+            color: '#3b82f6',
             lineWidth: 2,
             lastValueVisible: false,
             priceLineVisible: false
         });
-        const upperSeries = chart.addSeries(LineSeries, { 
-            color: 'red', 
-            lineWidth: 1, 
+        const upperSeries = chart.addSeries(LineSeries, {
+            color: 'red',
+            lineWidth: 1,
             lineStyle: 2,
             lastValueVisible: false,
             priceLineVisible: false
         });
-        const lowerSeries = chart.addSeries(LineSeries, { 
-            color: 'green', 
-            lineWidth: 1, 
+        const lowerSeries = chart.addSeries(LineSeries, {
+            color: 'green',
+            lineWidth: 1,
             lineStyle: 2,
             lastValueVisible: false,
             priceLineVisible: false
@@ -118,7 +143,7 @@ export const StreamChart = forwardRef<ChartController, StreamChartProps>((props,
         zScoreSeriesRef.current = zScoreSeries;
         chartRef.current = chart;
         zScoreChartRef.current = zScoreChart;
-        
+
         // Create markers primitive immediately after series creation
         seriesMarkersRef.current = createSeriesMarkers(priceSeries, []);
 
@@ -182,48 +207,61 @@ export const StreamChart = forwardRef<ChartController, StreamChartProps>((props,
         }
     }, [stopLossPrice, takeProfitPrice]);
 
-    useEffect(() => {
-        if (!seriesMarkersRef.current) return;
+    const updateMarkers = (signals: Signal[]) => {
+        if (!seriesMarkersRef.current || !seriesRef.current?.price) return;
 
-        if (props.signals && props.signals.length > 0) {
-            // Filter signals to last 5 minutes and convert to local time
-            const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-            const timezoneOffsetMs = new Date().getTimezoneOffset() * -60 * 1000;
-            
-            const markers = props.signals
-                .filter(signal => signal.timestamp >= fiveMinutesAgo)
-                .map(signal => {
-                    // Convert UTC timestamp to local time
-                    const localTimestamp = signal.timestamp + timezoneOffsetMs;
-                    return {
-                        time: (localTimestamp / 1000) as any,
-                        position: signal.type === 'BUY' ? 'belowBar' as const : 'aboveBar' as const,
-                        color: signal.type === 'BUY' ? '#22c55e' : '#ef4444',
-                        shape: signal.type === 'BUY' ? 'arrowUp' as const : 'arrowDown' as const,
-                        text: signal.type
-                    };
-                });
+        if (signals && signals.length > 0) {
+            const priceData = seriesRef.current.price.data();
+            if (priceData.length === 0) {
+                seriesMarkersRef.current.setMarkers([]);
+                return;
+            }
+
+            const minTime = priceData[0].time as number;
+            const maxTime = priceData[priceData.length - 1].time as number;
+
+            const markers = signals
+                .map(signal => ({
+                    ...signal,
+                    timeSec: signal.timestamp / 1000
+                }))
+                // Filter: only show signals that fall within the loaded price data range
+                .filter(signal => signal.timeSec >= minTime && signal.timeSec <= maxTime)
+                .map(signal => ({
+                    time: signal.timeSec as any,
+                    position: signal.type === 'BUY' ? 'belowBar' as const : 'aboveBar' as const,
+                    color: signal.type === 'BUY' ? '#22c55e' : '#ef4444',
+                    shape: signal.type === 'BUY' ? 'arrowUp' as const : 'arrowDown' as const,
+                    text: signal.type
+                }));
             seriesMarkersRef.current.setMarkers(markers);
         } else {
             seriesMarkersRef.current.setMarkers([]);
         }
+    };
+
+    useEffect(() => {
+        updateMarkers(props.signals || []);
     }, [props.signals]);
 
     // 🔥 ЭКСПОРТ МЕТОДОВ ДЛЯ ХУКА (useImperativeHandle)
     useImperativeHandle(ref, () => ({
         setHistory: (data: MetricData[]) => {
             if (!seriesRef.current) return;
-            
-            // Timestamps are already in local time (milliseconds), just convert to seconds
+
+            // Timestamps are in UTC (milliseconds), convert to seconds for lightweight-charts
             const prices = data.map(d => ({ time: (d.timestamp / 1000) as any, value: d.price }));
             const medians = data.map(d => ({ time: (d.timestamp / 1000) as any, value: d.median }));
             const uppers = data.map(d => ({ time: (d.timestamp / 1000) as any, value: d.median + (3 * d.mad) }));
             const lowers = data.map(d => ({ time: (d.timestamp / 1000) as any, value: d.median - (3 * d.mad) }));
-            
+
             seriesRef.current.price.setData(prices);
             seriesRef.current.median.setData(medians);
             seriesRef.current.upper.setData(uppers);
             seriesRef.current.lower.setData(lowers);
+
+            // Refilter markers because price data range has changed
+            updateMarkers(props.signals || []);
 
             if (chartRef.current && data.length > 0) {
                 // Use the actual data range for visible range
@@ -238,13 +276,13 @@ export const StreamChart = forwardRef<ChartController, StreamChartProps>((props,
 
         setZScoreHistory: (data: { time: number; value: number }[]) => {
             if (!zScoreSeriesRef.current) return;
-            
+
             const zScoreData = data.map(d => ({
                 time: d.time as any,
                 value: d.value,
                 color: d.value >= 0 ? '#22c55e' : '#ef4444'
             }));
-            
+
             zScoreSeriesRef.current.setData(zScoreData);
         },
 
@@ -252,20 +290,61 @@ export const StreamChart = forwardRef<ChartController, StreamChartProps>((props,
         updateCandle: (tick: any) => {
             if (!seriesRef.current || !chartRef.current) return;
 
-            seriesRef.current.price.update({ time: tick.time, value: tick.price });
-            seriesRef.current.median.update({ time: tick.time, value: tick.median });
-            seriesRef.current.upper.update({ time: tick.time, value: tick.upper });
-            seriesRef.current.lower.update({ time: tick.time, value: tick.lower });
+            try {
+                // Determine the last timestamp from the series to prevent out-of-order updates
+                const data = seriesRef.current.price.data();
+                const lastPoint = data.length > 0 ? data[data.length - 1] : null;
+                const lastTime = lastPoint ? (lastPoint.time as number) : 0;
+
+                // Validate time
+                if (typeof tick.time !== 'number' || isNaN(tick.time)) {
+                    console.warn('⚠️ Invalid tick time:', tick.time);
+                    return;
+                }
+
+                // If new time is older than last time, ignore it (prevent crash)
+                if (tick.time < lastTime) {
+                    // console.warn(`⚠️ Out-of-order tick ignored: ${tick.time} < ${lastTime}`);
+                    return;
+                }
+
+                seriesRef.current.price.update({ time: tick.time, value: tick.price });
+                seriesRef.current.median.update({ time: tick.time, value: tick.median });
+                seriesRef.current.upper.update({ time: tick.time, value: tick.upper });
+                seriesRef.current.lower.update({ time: tick.time, value: tick.lower });
+            } catch (err) {
+                console.error('❌ Chart Update Error:', err, 'Tick:', tick);
+            }
         },
 
         updateZScore: (data: { time: number; value: number }) => {
             if (!zScoreSeriesRef.current) return;
-            
-            zScoreSeriesRef.current.update({
-                time: data.time as any,
-                value: data.value,
-                color: data.value >= 0 ? '#22c55e' : '#ef4444'
-            });
+
+            try {
+                // Validate time
+                if (typeof data.time !== 'number' || isNaN(data.time)) {
+                    // console.warn('⚠️ Invalid zScore time:', data.time);
+                    return;
+                }
+
+                // Determine the last timestamp from the series to prevent out-of-order updates
+                const seriesData = zScoreSeriesRef.current.data();
+                const lastPoint = seriesData.length > 0 ? seriesData[seriesData.length - 1] : null;
+                const lastTime = lastPoint ? (lastPoint.time as number) : 0;
+
+                // If new time is older than last time, ignore it
+                if (data.time < lastTime) {
+                    return;
+                }
+
+                zScoreSeriesRef.current.update({
+                    time: data.time as any,
+                    value: data.value,
+                    color: data.value >= 0 ? '#22c55e' : '#ef4444'
+                });
+            } catch (err) {
+                console.error('❌ Z-Score Update Error:', err);
+            }
         }
     }));
 
